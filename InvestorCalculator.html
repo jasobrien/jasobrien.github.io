@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Property Cost & Cashflow Calculator — NSW</title>
+
+<!-- jsPDF for PDF export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:20px;background:#f7fafc;color:#0b2430}
+  .wrap{max-width:980px;margin:0 auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 6px 18px rgba(6,22,34,.08)}
+  h1{margin-top:0;font-size:22px}
+  label{display:block;margin:8px 0 4px;font-weight:600}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .col{flex:1;min-width:220px}
+  input[type="number"], select{width:100%;padding:8px;border:1px solid #d1e3ea;border-radius:6px}
+  .small{font-size:13px;color:#436272}
+  .slider{width:100%}
+  .results{margin-top:18px;background:#fbfeff;padding:12px;border-radius:8px;border:1px solid #e3f0f4}
+  .line{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(6,22,34,.04)}
+  .line:last-child{border-bottom:0}
+  .big{font-size:18px;font-weight:700}
+  footer{margin-top:14px;font-size:13px;color:#52676f}
+  button{padding:10px 14px;border-radius:8px;background:#0b7fa6;color:white;border:0;cursor:pointer;margin-top:10px}
+  .muted{color:#6e8792;font-size:13px}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <h1>Property Upfront Cost & Cashflow Calculator (NSW)</h1>
+
+  <!-- FORM SECTION (unchanged) -->
+  <div class="row">
+    <div class="col">
+      <label>Purchase price (AUD)</label>
+      <input id="price" type="number" value="650000" step="1000">
+    </div>
+    <div class="col">
+      <label>Weekly rent (AUD)</label>
+      <input id="rent_week" type="number" value="500">
+    </div>
+    <div class="col">
+      <label>Strata (per quarter)</label>
+      <input id="strata_qtr" type="number" value="1000">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>Deposit (%)</label>
+      <input id="deposit_percent" class="slider" type="range" min="5" max="50" value="20">
+      <div class="muted">Deposit: <span id="deposit_display">20%</span>  
+      &nbsp; → &nbsp; $<span id="deposit_amount">130,000</span></div>
+    </div>
+
+    <div class="col">
+      <label>Interest rate (%)</label>
+      <input id="interest_rate" class="slider" type="range" min="2" max="12" step="0.1" value="6">
+      <div class="muted">Rate: <span id="interest_display">6.0%</span></div>
+    </div>
+
+    <div class="col">
+      <label>Loan term (years)</label>
+      <input id="loan_term" type="number" value="30" min="1" max="50">
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>Conveyancing (est)</label>
+      <input id="legal_fee" type="number" value="1500">
+    </div>
+    <div class="col">
+      <label>Inspection</label>
+      <input id="inspection_fee" type="number" value="400">
+    </div>
+    <div class="col">
+      <label>Loan fees</label>
+      <input id="loan_fees" type="number" value="600">
+    </div>
+  </div>
+
+  <label><input id="include_lmi" type="checkbox"> Estimate LMI if deposit < 20%</label>
+
+  <div class="results">
+    <div class="line"><div>Deposit</div><div>$<span id="out_deposit"></span></div></div>
+    <div class="line"><div>Stamp duty (NSW)</div><div>$<span id="out_stamp"></span></div></div>
+    <div class="line"><div>Other fees</div><div>$<span id="out_fees"></span></div></div>
+    <div class="line"><strong>Total upfront</strong><strong>$<span id="out_upfront"></span></strong></div>
+
+    <hr>
+
+    <div class="line"><div>Loan amount</div><div>$<span id="out_loan"></span></div></div>
+    <div class="line"><div>Monthly repayment</div><div>$<span id="out_monthly"></span></div></div>
+    <div class="line"><div>Annual rent</div><div>$<span id="out_rent_annual"></span></div></div>
+    <div class="line"><div>Operating costs</div><div>$<span id="out_opcosts"></span></div></div>
+    <div class="line"><div>Net before interest</div><div>$<span id="out_net_before_interest"></span></div></div>
+    <div class="line"><div>Annual interest</div><div>$<span id="out_interest"></span></div></div>
+    <div class="line"><strong>Net after interest</strong><strong>$<span id="out_cashflow"></span></strong></div>
+
+    <div class="muted">Gross yield: <span id="out_gross_yield"></span>  
+      · Net yield: <span id="out_net_yield"></span></div>
+
+    <!-- ⭐ PDF Export Button -->
+    <button onclick="exportPDF()">Download PDF Summary</button>
+  </div>
+
+  <footer>
+    <div class="muted">Stamp duty bands based on Revenue NSW.</div>
+  </footer>
+</div>
+
+<script>
+/* -----------------------------
+   NSW Stamp Duty Table
+------------------------------*/
+const nswDutyTable = [
+  {min:0, max:16000, base:0, ratePer100:1.25},
+  {min:16000, max:35000, base:200, ratePer100:1.50},
+  {min:35000, max:93000, base:485, ratePer100:1.75},
+  {min:93000, max:351000, base:1500, ratePer100:3.50},
+  {min:351000, max:1168000, base:10530, ratePer100:4.50},
+  {min:1168000, max:Infinity, base:47295, ratePer100:5.50}
+];
+
+function calcNSWDuty(price){
+  for(const r of nswDutyTable){
+    if(price >= r.min && price <= r.max){
+      const excess = price - r.min;
+      return Math.round(r.base + (excess/100) * r.ratePer100);
+    }
+  }
+  return 0;
+}
+
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString('en-AU');
+
+/* -----------------------------
+   MAIN CALCULATION
+------------------------------*/
+function updateAll(){
+  const price = Number($('price').value);
+  const rent = Number($('rent_week').value)*52;
+  const strata = Number($('strata_qtr').value)*4;
+  const depositPct = Number($('deposit_percent').value);
+  const interest = Number($('interest_rate').value);
+  const loanTerm = Number($('loan_term').value);
+
+  $('deposit_display').innerText = depositPct + "%";
+
+  const deposit = Math.round(price * depositPct/100);
+  $('deposit_amount').innerText = fmt(deposit);
+
+  const stamp = calcNSWDuty(price);
+  const fees = Number($('legal_fee').value) + Number($('inspection_fee').value) + Number($('loan_fees').value);
+
+  const loan = price - deposit;
+  const monthlyRate = (interest/100)/12;
+  const months = loanTerm * 12;
+
+  const monthly = Math.round(loan * monthlyRate / (1 - Math.pow(1+monthlyRate,-months)));
+
+  const council = 2200;
+  const insurance = 400;
+  const pm = Math.round(rent * 0.07);
+  const maintenance = 1000;
+
+  const op = strata + council + insurance + pm + maintenance;
+  const netBefore = rent - op;
+  const annualInterest = Math.round(loan * interest/100);
+  const netAfter = netBefore - annualInterest;
+
+  // Outputs
+  $('out_deposit').innerText = fmt(deposit);
+  $('out_stamp').innerText = fmt(stamp);
+  $('out_fees').innerText = fmt(fees);
+  $('out_upfront').innerText = fmt(deposit + stamp + fees);
+
+  $('out_loan').innerText = fmt(loan);
+  $('out_monthly').innerText = fmt(monthly);
+  $('out_rent_annual').innerText = fmt(rent);
+  $('out_opcosts').innerText = fmt(op);
+  $('out_net_before_interest').innerText = fmt(netBefore);
+  $('out_interest').innerText = fmt(annualInterest);
+  $('out_cashflow').innerText = fmt(netAfter);
+
+  $('interest_display').innerText = interest.toFixed(1) + "%";
+
+  $('out_gross_yield').innerText = (rent/price*100).toFixed(2) + "%";
+  $('out_net_yield').innerText = (netBefore/price*100).toFixed(2) + "%";
+}
+
+const inputs = document.querySelectorAll("input");
+inputs.forEach(i => i.addEventListener("input", updateAll));
+updateAll();
+
+/* -----------------------------
+   ⭐ PDF EXPORT FUNCTION
+------------------------------*/
+function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF();
+
+  let y = 10;
+  pdf.setFontSize(16);
+  pdf.text("Property Investment Summary", 10, y);
+  y += 10;
+  pdf.setFontSize(11);
+
+  function line(label, value){
+    pdf.text(`${label}: ${value}`, 10, y);
+    y += 7;
+  }
+
+  line("Purchase price", "$" + $('price').value);
+  line("Weekly rent", "$" + $('rent_week').value);
+  line("Strata (quarterly)", "$" + $('strata_qtr').value);
+  line("Deposit", "$" + $('out_deposit').innerText);
+  line("Stamp duty", "$" + $('out_stamp').innerText);
+  line("Upfront fees", "$" + $('out_fees').innerText);
+  line("Total upfront", "$" + $('out_upfront').innerText);
+  y += 3;
+  line("Loan amount", "$" + $('out_loan').innerText);
+  line("Monthly repayment", "$" + $('out_monthly').innerText);
+  y += 3;
+  line("Annual rent", "$" + $('out_rent_annual').innerText);
+  line("Operating costs", "$" + $('out_opcosts').innerText);
+  line("Net before interest", "$" + $('out_net_before_interest').innerText);
+  line("Annual interest", "$" + $('out_interest').innerText);
+  line("Net after interest", "$" + $('out_cashflow').innerText);
+
+  pdf.save("property-summary.pdf");
+}
+</script>
+
+</body>
+</html>
