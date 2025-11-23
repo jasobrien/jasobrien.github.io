@@ -1,12 +1,13 @@
 # Property Investment Calculator
 
-A simple, browser-based calculator for analysing Australian property investment scenarios. The tool allows users to enter property details, financial assumptions, and mortgage parameters to automatically compute:
+A browser-based calculator for analysing Australian property investment scenarios. Enter property details, financial assumptions, and mortgage parameters to automatically compute:
 
-* Upfront purchase costs
-* Mortgage repayment amounts
-* Cashflow impacts
-* Custom scenarios via adjustable interest rates and deposit sizes
-* Export of results to PDF
+- Upfront purchase costs
+- Mortgage repayment amounts
+- Cashflow impacts
+- Custom scenarios via adjustable interest rates and deposit sizes
+- Tax and depreciation effects
+- Export of results to PDF
 
 This project is ideal for investors assessing the viability of residential property purchases.
 
@@ -18,14 +19,16 @@ This project is ideal for investors assessing the viability of residential prope
 
 The web interface includes fields for entering:
 
-* Purchase price
-* Weekly rent
-* Strata fees
-* Stamp duty assumptions
-* Deposit amount
-* Interest rate
-* Loan term
-* Other expenses (council, insurance, maintenance, management fees)
+- Purchase price
+- Weekly rent
+- Strata fees
+- Stamp duty assumptions
+- Deposit amount
+- Interest rate
+- Loan term
+- Other expenses (council, insurance, maintenance, management fees)
+- Depreciation (Div 43 & Div 40)
+- Tax bracket selection
 
 ---
 
@@ -35,20 +38,28 @@ Based on the provided values, the calculator computes:
 
 #### **Upfront Costs**
 
-* Deposit
-* Stamp duty
-* Transfer fees
-* Mortgage registration fees
-* Total upfront cost required
+- Deposit
+- Stamp duty
+- Transfer fees
+- Mortgage registration fees
+- LMI estimate (if deposit < 20%)
+- Total upfront cost required
 
 #### **Loan & Holding Costs**
 
-* Loan principal and LVR
-* Annual interest cost
-* Loan repayment estimate
-* Gross rental yield
-* Net rental yield
-* Cashflow before and after expenses
+- Loan principal and LVR
+- Annual interest cost (first-year amortisation)
+- Loan repayment estimate
+- Gross rental yield
+- Net rental yield
+- Cashflow before and after expenses
+
+#### **Tax & Depreciation**
+
+- Annual depreciation (Div 43 + Div 40)
+- Tax-deductible loss
+- Tax refund at selected rate
+- After-tax cashflow
 
 ---
 
@@ -56,11 +67,14 @@ Based on the provided values, the calculator computes:
 
 You can dynamically modify:
 
-* Deposit amount (percentage or fixed)
-* Interest rate (e.g., 5%–8%)
-* Expenses (strata, maintenance, council, management)
+- Deposit amount (percentage)
+- Interest rate (e.g., 5%–8%)
+- Loan term (years)
+- Expenses (strata, maintenance, council, management)
+- Depreciation values
+- Tax bracket
 
-This supports scenario modelling for interest-rate changes or different borrowing strategies.
+This supports scenario modelling for interest-rate changes, different borrowing strategies, and tax outcomes.
 
 ---
 
@@ -68,18 +82,19 @@ This supports scenario modelling for interest-rate changes or different borrowin
 
 Users can export the calculated results to a formatted PDF report, including:
 
-* All input fields
-* Summary of costs
-* Cashflow tables
-* Key metrics (yield, cashflow, total upfront)
+- All input fields
+- Summary of costs
+- Cashflow tables
+- Key metrics (yield, cashflow, total upfront)
+- Tax and depreciation summary
 
 ---
 
-## 🧱 Project Structure
+## 🧑‍💻 Project Structure
 
-* `index.html` – Main UI form and layout
-* `script.js` – Calculation logic & PDF generation
-* `styles.css` – Basic styling
+- `InvestorCalculator.html` – Main UI form and layout
+- `script.js` – Calculation logic & PDF generation
+- `styles.css` – Basic styling
 
 (Actual filenames may vary based on your implementation.)
 
@@ -103,43 +118,43 @@ The following features are planned:
 
 ### **1. Multi-Year Cashflow Projections**
 
-* 5, 10, and 20 year forecasts
-* Capital growth assumptions
-* Rent growth assumptions
-* Compounding expenses
-* Loan amortisation tables
+- 5, 10, and 20 year forecasts
+- Capital growth assumptions
+- Rent growth assumptions
+- Compounding expenses
+- Loan amortisation tables
 
 ---
 
 ### **2. Tax Modelling & Negative Gearing Analysis**
 
-* Tax deduction estimation
-* After-tax cashflow
-* Depreciation schedules (plant & building)
-* Investor-tier marginal tax bracket support
+- Tax deduction estimation
+- After-tax cashflow
+- Depreciation schedules (plant & building)
+- Investor-tier marginal tax bracket support
 
 ---
 
 ### **3. Advanced Loan Features**
 
-* Interest-only period modelling
-* Offset account impact
-* Variable vs fixed split loans
+- Interest-only period modelling
+- Offset account impact
+- Variable vs fixed split loans
 
 ---
 
 ### **4. Save & Load Scenarios**
 
-* Local storage persistence
-* Ability to compare multiple properties side-by-side
+- Local storage persistence
+- Ability to compare multiple properties side-by-side
 
 ---
 
 ### **5. UI Enhancements**
 
-* Dark mode
-* Graphs (cashflow vs years)
-* Mobile-friendly improvements
+- Dark mode
+- Graphs (cashflow vs years)
+- Mobile-friendly improvements
 
 ---
 
@@ -152,4 +167,3 @@ Feature requests and enhancements are welcome.
 ## 📄 License
 
 MIT License (modify as needed).
-

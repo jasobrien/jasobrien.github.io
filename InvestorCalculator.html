@@ -3,240 +3,465 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Property Cost & Cashflow Calculator — NSW</title>
+<title>Property Investment Calculator — NSW (with Tax Module)</title>
 
-<!-- jsPDF for PDF export -->
+<!-- Fonts & libraries -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 
 <style>
-  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:20px;background:#f7fafc;color:#0b2430}
-  .wrap{max-width:980px;margin:0 auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 6px 18px rgba(6,22,34,.08)}
-  h1{margin-top:0;font-size:22px}
-  label{display:block;margin:8px 0 4px;font-weight:600}
-  .row{display:flex;gap:12px;flex-wrap:wrap}
-  .col{flex:1;min-width:220px}
-  input[type="number"], select{width:100%;padding:8px;border:1px solid #d1e3ea;border-radius:6px}
-  .small{font-size:13px;color:#436272}
-  .slider{width:100%}
-  .results{margin-top:18px;background:#fbfeff;padding:12px;border-radius:8px;border:1px solid #e3f0f4}
-  .line{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(6,22,34,.04)}
-  .line:last-child{border-bottom:0}
-  .big{font-size:18px;font-weight:700}
-  footer{margin-top:14px;font-size:13px;color:#52676f}
-  button{padding:10px 14px;border-radius:8px;background:#0b7fa6;color:white;border:0;cursor:pointer;margin-top:10px}
-  .muted{color:#6e8792;font-size:13px}
+  :root{ --bg:#f4f7fb; --card:#ffffff; --accent:#1c7ed6; --muted:#5f7a86; --panel:#f6fbff }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:linear-gradient(180deg,#f7fafc 0%,var(--bg) 100%);color:#12343b;padding:28px}
+  .app{max-width:1100px;margin:0 auto}
+  header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
+  header .brand{background:linear-gradient(135deg,var(--accent),#0b6aa0);color:white;padding:14px;border-radius:10px}
+  header h1{margin:0;font-size:20px} header p{margin:0;color:var(--muted);font-size:13px}
+  .grid{display:grid;grid-template-columns:1fr 420px;gap:20px}
+  .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 28px rgba(8,29,40,.06)}
+  label{display:block;font-weight:600;margin-top:12px;color:#13353a}
+  input[type="number"], select, input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e2edf2;margin-top:6px;font-size:14px}
+  .small{font-size:12px;color:var(--muted);margin-top:6px}
+  .row{display:flex;gap:12px;margin-top:6px}.col{flex:1;min-width:0}
+  .controls{display:flex;gap:12px;margin-top:14px}
+  .btn{background:var(--accent);color:white;padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+  .btn.secondary{background:#eef6fb;color:var(--accent);border:1px solid #d7ecff}
+  .results .line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed rgba(8,29,40,0.04)}
+  .results .line:last-child{border-bottom:0}
+  .kpi{font-size:20px;font-weight:700;color:#0b3b4b}
+  .chart-wrap{padding:12px;background:var(--panel);border-radius:10px;margin-top:12px}
+  canvas{width:100% !important;height:300px !important}
+  footer{margin-top:16px;color:var(--muted);font-size:13px}
+  @media(max-width:980px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
-
 <body>
-<div class="wrap">
+  <div class="app">
+    <header>
+      <div class="brand"><strong style="font-size:16px">PropCalc</strong></div>
+      <div>
+        <h1>Property Investment Calculator — NSW</h1>
+        <p>Includes negative gearing + depreciation module and PDF export</p>
+      </div>
+    </header>
 
-  <h1>Property Upfront Cost & Cashflow Calculator (NSW)</h1>
+    <div class="grid">
+      <!-- LEFT: Inputs -->
+      <div class="card">
+        <h3>Property & Loan Inputs</h3>
 
-  <!-- FORM SECTION (unchanged) -->
-  <div class="row">
-    <div class="col">
-      <label>Purchase price (AUD)</label>
-      <input id="price" type="number" value="650000" step="1000">
+        <div class="row">
+          <div class="col">
+            <label>Purchase price (AUD)</label>
+            <input id="price" type="number" value="650000" step="1000" />
+          </div>
+          <div class="col">
+            <label>Weekly rent (AUD)</label>
+            <input id="rent_week" type="number" value="500" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Strata (per quarter)</label>
+            <input id="strata_qtr" type="number" value="1000" />
+          </div>
+          <div class="col">
+            <label>Deposit (%)</label>
+            <input id="deposit_percent" type="number" value="20" min="5" max="80" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Interest rate (annual %)</label>
+            <input id="interest_rate" type="number" step="0.1" value="6.0" />
+          </div>
+          <div class="col">
+            <label>Loan term (years)</label>
+            <input id="loan_term" type="number" value="30" min="1" max="50" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Conveyancing / legal (est)</label>
+            <input id="legal_fee" type="number" value="1500" />
+          </div>
+          <div class="col">
+            <label>Inspection / pest</label>
+            <input id="inspection_fee" type="number" value="400" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Loan application / valuation fees</label>
+            <input id="loan_fees" type="number" value="600" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
+            <label>Property management (%)</label>
+            <input id="pm_pct" type="number" value="7" />
+          </div>
+          <div class="col">
+            <label>Maintenance allowance (ann.)</label>
+            <input id="maintenance" type="number" value="1000" />
+          </div>
+        </div>
+
+        <h3 style="margin-top:18px">Depreciation</h3>
+        <div class="row">
+          <div class="col">
+            <label>Estimated building (capital) value for Division 43 (AUD)</label>
+            <input id="building_value" type="number" value="150000" />
+          </div>
+          <div class="col">
+            <label>Estimated plant & equipment (Division 40) annual claim (AUD)</label>
+            <input id="div40_annual" type="number" value="2000" />
+          </div>
+        </div>
+
+        <h3 style="margin-top:18px">Tax & Income</h3>
+        <label>Tax bracket (select marginal rate)</label>
+        <select id="taxBracket">
+          <option value="0.30">30% (income ~$45k–$120k)</option>
+          <option value="0.37">37% (income ~$120k–$180k)</option>
+          <option value="0.45">45% (income ~$180k+)</option>
+        </select>
+
+        <div class="controls">
+          <button class="btn" id="calcBtn">Recalculate</button>
+          <button class="btn secondary" id="pdfBtn">Download PDF</button>
+          <button class="btn secondary" id="resetBtn">Reset</button>
+        </div>
+
+        <footer class="small">Stamp duty implemented with NSW tiered bands for illustrative purposes — always confirm with Revenue NSW for precise duty and concessions.</footer>
+        <div style="margin-top:16px">
+          <label><input id="include_lmi" type="checkbox" /> Estimate LMI if deposit &lt; 20%</label>
+          <div class="small">Rough estimate only — actual LMI from lender.</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Results + Chart -->
+      <div class="card">
+        <h3>Summary</h3>
+        <div id="results" class="results">
+          <div class="line"><div>Deposit (cash)</div><div class="kpi" id="out_deposit">$0</div></div>
+          <div class="line"><div>Stamp / Transfer duty (NSW)</div><div id="out_stamp">$0</div></div>
+          <div class="line"><div>Other upfront fees (convey, inspection, loan fees)</div><div id="out_fees">$0</div></div>
+          <div class="line"><div>LMI estimate (if applicable)</div><div id="out_lmi">$0</div></div>
+          <div class="line"><div><strong>Total upfront (approx)</strong></div><div class="kpi" id="out_upfront">$0</div></div>
+
+          <div style="height:10px"></div>
+          <div class="line"><div>Loan amount</div><div id="out_loan">$0</div></div>
+          <div class="line"><div>Monthly repayment (P+I est)</div><div id="out_monthly">$0</div></div>
+          <div class="line"><div>Annual rent</div><div id="out_rent_annual">$0</div></div>
+          <div class="line"><div>Annual operating costs</div><div id="out_opcosts">$0</div></div>
+          <div class="line"><div>Net income before interest</div><div id="out_net_before_interest">$0</div></div>
+          <div class="line"><div>Annual interest (est)</div><div id="out_interest">$0</div></div>
+          <div class="line"><div><strong>Net cashflow after interest (annual)</strong></div><div class="kpi" id="out_cashflow">$0</div></div>
+
+          <div style="height:8px"></div>
+          <div class="small">Gross yield: <span id="out_gross_yield">-</span> · Net yield (before interest): <span id="out_net_yield">-</span></div>
+        </div>
+
+        <div class="chart-wrap">
+          <canvas id="cashflowChart" aria-label="Cashflow chart"></canvas>
+        </div>
+
+        <div class="card" style="margin-top:14px;padding:12px">
+          <h4 style="margin:0 0 8px 0">Tax & Depreciation</h4>
+          <div class="small">Annual depreciation (Div 43 + Div 40): <strong id="out_depreciation">$0</strong></div>
+          <div class="small">Total tax-deductible loss: <strong id="out_total_deduction">$0</strong></div>
+          <div class="small">Tax refund at selected rate: <strong id="out_tax_refund">$0</strong></div>
+          <div class="small">After-tax cashflow (annual): <strong id="out_after_tax_cashflow">$0</strong></div>
+        </div>
+      </div>
     </div>
-    <div class="col">
-      <label>Weekly rent (AUD)</label>
-      <input id="rent_week" type="number" value="500">
-    </div>
-    <div class="col">
-      <label>Strata (per quarter)</label>
-      <input id="strata_qtr" type="number" value="1000">
-    </div>
+
   </div>
-
-  <div class="row">
-    <div class="col">
-      <label>Deposit (%)</label>
-      <input id="deposit_percent" class="slider" type="range" min="5" max="50" value="20">
-      <div class="muted">Deposit: <span id="deposit_display">20%</span>  
-      &nbsp; → &nbsp; $<span id="deposit_amount">130,000</span></div>
-    </div>
-
-    <div class="col">
-      <label>Interest rate (%)</label>
-      <input id="interest_rate" class="slider" type="range" min="2" max="12" step="0.1" value="6">
-      <div class="muted">Rate: <span id="interest_display">6.0%</span></div>
-    </div>
-
-    <div class="col">
-      <label>Loan term (years)</label>
-      <input id="loan_term" type="number" value="30" min="1" max="50">
-    </div>
-  </div>
-
-  <div class="row">
-    <div class="col">
-      <label>Conveyancing (est)</label>
-      <input id="legal_fee" type="number" value="1500">
-    </div>
-    <div class="col">
-      <label>Inspection</label>
-      <input id="inspection_fee" type="number" value="400">
-    </div>
-    <div class="col">
-      <label>Loan fees</label>
-      <input id="loan_fees" type="number" value="600">
-    </div>
-  </div>
-
-  <label><input id="include_lmi" type="checkbox"> Estimate LMI if deposit < 20%</label>
-
-  <div class="results">
-    <div class="line"><div>Deposit</div><div>$<span id="out_deposit"></span></div></div>
-    <div class="line"><div>Stamp duty (NSW)</div><div>$<span id="out_stamp"></span></div></div>
-    <div class="line"><div>Other fees</div><div>$<span id="out_fees"></span></div></div>
-    <div class="line"><strong>Total upfront</strong><strong>$<span id="out_upfront"></span></strong></div>
-
-    <hr>
-
-    <div class="line"><div>Loan amount</div><div>$<span id="out_loan"></span></div></div>
-    <div class="line"><div>Monthly repayment</div><div>$<span id="out_monthly"></span></div></div>
-    <div class="line"><div>Annual rent</div><div>$<span id="out_rent_annual"></span></div></div>
-    <div class="line"><div>Operating costs</div><div>$<span id="out_opcosts"></span></div></div>
-    <div class="line"><div>Net before interest</div><div>$<span id="out_net_before_interest"></span></div></div>
-    <div class="line"><div>Annual interest</div><div>$<span id="out_interest"></span></div></div>
-    <div class="line"><strong>Net after interest</strong><strong>$<span id="out_cashflow"></span></strong></div>
-
-    <div class="muted">Gross yield: <span id="out_gross_yield"></span>  
-      · Net yield: <span id="out_net_yield"></span></div>
-
-    <!-- ⭐ PDF Export Button -->
-    <button onclick="exportPDF()">Download PDF Summary</button>
-  </div>
-
-  <footer>
-    <div class="muted">Stamp duty bands based on Revenue NSW.</div>
-  </footer>
-</div>
 
 <script>
-/* -----------------------------
-   NSW Stamp Duty Table
-------------------------------*/
+/* ===== NSW duty bands (illustrative) ===== */
 const nswDutyTable = [
-  {min:0, max:16000, base:0, ratePer100:1.25},
-  {min:16000, max:35000, base:200, ratePer100:1.50},
-  {min:35000, max:93000, base:485, ratePer100:1.75},
-  {min:93000, max:351000, base:1500, ratePer100:3.50},
-  {min:351000, max:1168000, base:10530, ratePer100:4.50},
-  {min:1168000, max:Infinity, base:47295, ratePer100:5.50}
+  {min: 0,      max: 16000,  base: 0,      ratePer100: 1.25},
+  {min: 16000,  max: 35000,  base: 200,    ratePer100: 1.50},
+  {min: 35000,  max: 93000,  base: 485,    ratePer100: 1.75},
+  {min: 93000,  max: 351000, base: 1500,   ratePer100: 3.50},
+  {min: 351000, max: 1168000, base:10530,  ratePer100: 4.50},
+  {min: 1168000, max: Infinity, base:47295, ratePer100: 5.50}
 ];
 
 function calcNSWDuty(price){
-  for(const r of nswDutyTable){
-    if(price >= r.min && price <= r.max){
-      const excess = price - r.min;
-      return Math.round(r.base + (excess/100) * r.ratePer100);
+  price = Number(price) || 0;
+  for(const row of nswDutyTable){
+    if(price >= row.min && price <= row.max){
+      const excess = Math.max(0, price - row.min);
+      const duty = row.base + (excess / 100) * row.ratePer100;
+      return Math.round(duty);
     }
   }
   return 0;
 }
 
+/* Helpers */
 const $ = id => document.getElementById(id);
-const fmt = n => Number(n).toLocaleString('en-AU');
+const fmt = n => Number(n).toLocaleString('en-AU',{maximumFractionDigits:0});
 
-/* -----------------------------
-   MAIN CALCULATION
-------------------------------*/
+/* Chart instance holder */
+let chartInstance = null;
+
+/* Main calculation */
 function updateAll(){
-  const price = Number($('price').value);
-  const rent = Number($('rent_week').value)*52;
-  const strata = Number($('strata_qtr').value)*4;
-  const depositPct = Number($('deposit_percent').value);
-  const interest = Number($('interest_rate').value);
-  const loanTerm = Number($('loan_term').value);
-
-  $('deposit_display').innerText = depositPct + "%";
-
-  const deposit = Math.round(price * depositPct/100);
-  $('deposit_amount').innerText = fmt(deposit);
-
-  const stamp = calcNSWDuty(price);
-  const fees = Number($('legal_fee').value) + Number($('inspection_fee').value) + Number($('loan_fees').value);
-
-  const loan = price - deposit;
-  const monthlyRate = (interest/100)/12;
-  const months = loanTerm * 12;
-
-  const monthly = Math.round(loan * monthlyRate / (1 - Math.pow(1+monthlyRate,-months)));
-
-  const council = 2200;
-  const insurance = 400;
-  const pm = Math.round(rent * 0.07);
-  const maintenance = 1000;
-
-  const op = strata + council + insurance + pm + maintenance;
-  const netBefore = rent - op;
-  const annualInterest = Math.round(loan * interest/100);
-  const netAfter = netBefore - annualInterest;
-
-  // Outputs
-  $('out_deposit').innerText = fmt(deposit);
-  $('out_stamp').innerText = fmt(stamp);
-  $('out_fees').innerText = fmt(fees);
-  $('out_upfront').innerText = fmt(deposit + stamp + fees);
-
-  $('out_loan').innerText = fmt(loan);
-  $('out_monthly').innerText = fmt(monthly);
-  $('out_rent_annual').innerText = fmt(rent);
-  $('out_opcosts').innerText = fmt(op);
-  $('out_net_before_interest').innerText = fmt(netBefore);
-  $('out_interest').innerText = fmt(annualInterest);
-  $('out_cashflow').innerText = fmt(netAfter);
-
-  $('interest_display').innerText = interest.toFixed(1) + "%";
-
-  $('out_gross_yield').innerText = (rent/price*100).toFixed(2) + "%";
-  $('out_net_yield').innerText = (netBefore/price*100).toFixed(2) + "%";
-}
-
-const inputs = document.querySelectorAll("input");
-inputs.forEach(i => i.addEventListener("input", updateAll));
-updateAll();
-
-/* -----------------------------
-   ⭐ PDF EXPORT FUNCTION
-------------------------------*/
-function exportPDF(){
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-
-  let y = 10;
-  pdf.setFontSize(16);
-  pdf.text("Property Investment Summary", 10, y);
-  y += 10;
-  pdf.setFontSize(11);
-
-  function line(label, value){
-    pdf.text(`${label}: ${value}`, 10, y);
-    y += 7;
+  // Automatically tick LMI if deposit < 20%
+  const deposit_pct_val = Number(document.getElementById('deposit_percent').value) || 20;
+  const lmiCheckbox = document.getElementById('include_lmi');
+  if(deposit_pct_val < 20) {
+    lmiCheckbox.checked = true;
   }
+  const price = Number($('price').value) || 0;
+  const rent_week = Number($('rent_week').value) || 0;
+  const strata_qtr = Number($('strata_qtr').value) || 0;
+  const deposit_pct = Number($('deposit_percent').value) || 20;
+  const interest_rate = Number($('interest_rate').value) || 6;
+  const loan_term = Number($('loan_term').value) || 30;
+  const legal = Number($('legal_fee').value) || 0;
+  const inspection = Number($('inspection_fee').value) || 0;
+  const loan_fees = Number($('loan_fees').value) || 0;
+  const include_lmi = $('include_lmi').checked;
+  const pm_pct = Number($('pm_pct').value) || 7;
+  const maintenance = Number($('maintenance').value) || 1000;
 
-  line("Purchase price", "$" + $('price').value);
-  line("Weekly rent", "$" + $('rent_week').value);
-  line("Strata (quarterly)", "$" + $('strata_qtr').value);
-  line("Deposit", "$" + $('out_deposit').innerText);
-  line("Stamp duty", "$" + $('out_stamp').innerText);
-  line("Upfront fees", "$" + $('out_fees').innerText);
-  line("Total upfront", "$" + $('out_upfront').innerText);
-  y += 3;
-  line("Loan amount", "$" + $('out_loan').innerText);
-  line("Monthly repayment", "$" + $('out_monthly').innerText);
-  y += 3;
-  line("Annual rent", "$" + $('out_rent_annual').innerText);
-  line("Operating costs", "$" + $('out_opcosts').innerText);
-  line("Net before interest", "$" + $('out_net_before_interest').innerText);
-  line("Annual interest", "$" + $('out_interest').innerText);
-  line("Net after interest", "$" + $('out_cashflow').innerText);
+  // deposit
+  const deposit_amount = Math.round(price * (deposit_pct/100));
+  $('out_deposit').innerText = '$' + fmt(deposit_amount);
 
-  pdf.save("property-summary.pdf");
+  // stamp
+  const stamp = calcNSWDuty(price);
+  $('out_stamp').innerText = '$' + fmt(stamp);
+
+  // simple LMI estimate if requested & deposit < 20%
+  let lmi = 0;
+  const loanAmountIf = Math.max(0, price - deposit_amount);
+  if(include_lmi && deposit_pct < 20){
+    const lvr = loanAmountIf / price;
+    // heuristic ramp: between 0.5% - 3% of loan depending on LVR
+    const lmiRate = Math.min(0.03, Math.max(0.005, (lvr - 0.8) * 0.5 + 0.01));
+    lmi = Math.round(loanAmountIf * lmiRate);
+  }
+  // Show LMI in summary
+  $('out_lmi').innerText = '$' + fmt(lmi);
+
+  const out_fees = legal + inspection + loan_fees + lmi;
+  $('out_fees').innerText = '$' + fmt(out_fees);
+
+  const upfront = deposit_amount + stamp + out_fees;
+  $('out_upfront').innerText = '$' + fmt(upfront);
+
+  // loan & repayments
+  const loan_amount = Math.round(Math.max(0, price - deposit_amount));
+  $('out_loan').innerText = '$' + fmt(loan_amount);
+
+  const monthlyRate = interest_rate / 100 / 12;
+  const n = loan_term * 12;
+  // compute exact monthly repayment, then display rounded
+  let monthlyRepayExact = 0;
+  if(monthlyRate === 0) monthlyRepayExact = loan_amount / n;
+  else monthlyRepayExact = loan_amount * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -n)));
+  const monthlyRepay = Math.round(monthlyRepayExact);
+  $('out_monthly').innerText = '$' + fmt(monthlyRepay);
+
+  // annuals
+  const rentAnnual = Math.round(rent_week * 52);
+  $('out_rent_annual').innerText = '$' + fmt(rentAnnual);
+
+  const strataAnnual = Math.round(strata_qtr * 4);
+  const council_water = 2200;
+  const insurance = 400;
+  const pm_fee = Math.round(rentAnnual * (pm_pct/100));
+  const opCosts = strataAnnual + council_water + insurance + pm_fee + maintenance;
+  $('out_opcosts').innerText = '$' + fmt(opCosts);
+
+  const netBeforeInterest = rentAnnual - opCosts;
+  $('out_net_before_interest').innerText = '$' + fmt(netBeforeInterest);
+
+  // compute interest paid in first 12 months using amortisation schedule
+  let annualInterest = 0;
+  if(monthlyRate === 0){
+    annualInterest = 0;
+  } else {
+    let balance = loan_amount;
+    let interestSum = 0;
+    for(let m=0;m<12;m++){
+      const interestThisMonth = balance * monthlyRate;
+      const principalThisMonth = monthlyRepayExact - interestThisMonth;
+      balance = Math.max(0, balance - principalThisMonth);
+      interestSum += interestThisMonth;
+    }
+    annualInterest = Math.round(interestSum);
+  }
+  $('out_interest').innerText = '$' + fmt(annualInterest);
+
+  const netAfterInterest = Math.round(netBeforeInterest - annualInterest);
+  $('out_cashflow').innerText = '$' + fmt(netAfterInterest);
+
+  // yields
+  const grossYield = price > 0 ? (rentAnnual / price) * 100 : 0;
+  const netYieldBeforeInterest = price > 0 ? (netBeforeInterest / price) * 100 : 0;
+  $('out_gross_yield').innerText = grossYield.toFixed(2) + '%';
+  $('out_net_yield').innerText = netYieldBeforeInterest.toFixed(2) + '%';
+
+  // draw chart (rent, strata, pm fee, maintenance, interest)
+  const chartData = {
+    labels: ['Rent', 'Strata', 'Mgmt Fee', 'Maintenance', 'Interest'],
+    values: [rentAnnual, strataAnnual, pm_fee, maintenance, annualInterest]
+  };
+  drawChart(chartData);
+
+  // depreciation & tax
+  const buildingValue = Number($('building_value').value) || 0;
+  const div43 = Math.round(buildingValue * 0.025);
+  const div40 = Number($('div40_annual').value) || 0;
+  const depreciation = div43 + div40;
+  $('out_depreciation').innerText = '$' + fmt(depreciation);
+
+  const taxRate = Number($('taxBracket').value) || 0.30;
+  // tax-deductible loss: negative of netAfterInterest (if negative) plus depreciation
+  const lossBeforeTax = Math.max(0, -netAfterInterest); // if positive cash, loss is 0
+  const totalDeduction = lossBeforeTax + depreciation;
+  $('out_total_deduction').innerText = '$' + fmt(totalDeduction);
+
+  const taxRefund = Math.round(totalDeduction * taxRate);
+  $('out_tax_refund').innerText = '$' + fmt(taxRefund);
+
+  const afterTaxCashflow = netAfterInterest + taxRefund;
+  $('out_after_tax_cashflow').innerText = '$' + fmt(afterTaxCashflow);
+
+  // add tax refund into chart as separate dataset (append)
+  const chartWithTax = {
+    labels: ['Rent', 'Strata', 'Mgmt Fee', 'Maintenance', 'Interest', 'Tax Refund'],
+    values: [rentAnnual, strataAnnual, pm_fee, maintenance, annualInterest, taxRefund]
+  };
+  drawChart(chartWithTax);
 }
-</script>
 
+/* Chart drawing */
+function drawChart(data){
+  const ctx = document.getElementById('cashflowChart').getContext('2d');
+  if(chartInstance) chartInstance.destroy();
+
+  const palette = ['#1c7ed6','#74c0fc','#20c997','#ffd43b','#f03e3e','#6f42c1'];
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: data.labels, datasets: [{ label: 'Annual AUD', data: data.values, backgroundColor: palette }] },
+    options: { responsive: true, plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } }, scales: { y: { beginAtZero: true, ticks: { callback: value => Intl.NumberFormat('en-AU').format(value) } } } }
+  });
+}
+
+/* Export PDF */
+async function exportPDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const left = 40;
+  let y = 40;
+
+  // Title
+  doc.setFontSize(16);
+  doc.text('Property Investment Summary', left, y);
+  y += 20;
+  doc.setFontSize(9);
+  doc.text(`Generated: ${new Date().toLocaleString()}`, left, y);
+  y += 14;
+
+  // Key inputs (two-column table style)
+  const rows = [
+    ['Purchase price', $('price').value ? '$' + fmt($('price').value) : '-'],
+    ['Weekly rent', $('rent_week').value ? '$' + fmt($('rent_week').value) + ' /wk' : '-'],
+    ['Strata (qtr)', $('strata_qtr').value ? '$' + fmt($('strata_qtr').value) + ' /qtr' : '-'],
+    ['Deposit (%)', $('deposit_percent').value + '%'],
+    ['Interest rate', $('interest_rate').value + '%'],
+    ['Loan term', $('loan_term').value + ' yrs'],
+    ['Include LMI estimate', $('include_lmi').checked ? 'Yes' : 'No']
+  ];
+
+  doc.setFontSize(10);
+  rows.forEach(r=>{ doc.text(r[0], left, y); doc.text(String(r[1]), 320, y); y += 12; });
+
+  y += 6;
+  doc.setFillColor(240,246,255);
+  doc.rect(left-6, y-6, 520, 140, 'F'); // slightly smaller panel
+  doc.setFontSize(10);
+  doc.setTextColor(20,50,60);
+  let panelY = y;
+
+  // Summary metrics
+  const metrics = [
+    ['Deposit (cash)', $('out_deposit').innerText],
+    ['Stamp duty (NSW)', $('out_stamp').innerText],
+    ['Other upfront fees', $('out_fees').innerText],
+    ['Total upfront (approx)', $('out_upfront').innerText],
+    ['Loan amount', $('out_loan').innerText],
+    ['Monthly repayment', $('out_monthly').innerText],
+    ['Annual rent', $('out_rent_annual').innerText],
+    ['Operating costs (ann)', $('out_opcosts').innerText],
+    ['Net before interest (ann)', $('out_net_before_interest').innerText],
+    ['Annual interest (est)', $('out_interest').innerText],
+    ['Net after interest (ann)', $('out_cashflow').innerText],
+    ['Depreciation (ann)', $('out_depreciation').innerText],
+    ['Total deduction', $('out_total_deduction').innerText],
+    ['Tax refund', $('out_tax_refund').innerText],
+    ['After-tax cashflow (ann)', $('out_after_tax_cashflow').innerText]
+  ];
+
+  metrics.forEach(m=>{ doc.text(m[0], left, panelY); doc.text(String(m[1]), 320, panelY); panelY += 11; });
+
+  y = panelY + 10;
+
+  // Add chart below metrics (same page)
+  try{
+    const canvas = document.getElementById('cashflowChart');
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    doc.setFontSize(12);
+    doc.text('Cashflow Chart', left, y);
+    const imgWidth = 400; const imgHeight = 180;
+    doc.addImage(imgData, 'PNG', left, y+10, imgWidth, imgHeight);
+  } catch(e){ console.warn('Chart capture failed for PDF:', e); }
+
+  doc.save('property-summary.pdf');
+}
+
+/* Wire up events */
+document.getElementById('calcBtn').addEventListener('click', updateAll);
+document.getElementById('pdfBtn').addEventListener('click', exportPDF);
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  $('price').value = 650000;
+  $('rent_week').value = 500;
+  $('strata_qtr').value = 1000;
+  $('deposit_percent').value = 20;
+  $('interest_rate').value = 6.0;
+  $('loan_term').value = 30;
+  $('legal_fee').value = 1500;
+  $('inspection_fee').value = 400;
+  $('loan_fees').value = 600;
+  $('include_lmi').checked = false;
+  $('pm_pct').value = 7;
+  $('maintenance').value = 1000;
+  updateAll();
+});
+
+// auto update on input changes
+document.querySelectorAll('input, select').forEach(el => {
+  el.addEventListener('change', updateAll);
+  el.addEventListener('input', updateAll);
+});
+
+/* Initialize */
+window.addEventListener('load', ()=>{ updateAll(); });
+
+</script>
 </body>
 </html>
