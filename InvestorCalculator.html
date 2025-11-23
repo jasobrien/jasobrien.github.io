@@ -54,7 +54,7 @@
         <div class="row">
           <div class="col">
             <label>Purchase price (AUD)</label>
-            <input id="price" type="number" value="650000" step="1000" />
+            <input id="price" type="number" value="500000" step="1000" />
           </div>
           <div class="col">
             <label>Weekly rent (AUD)</label>
@@ -140,9 +140,22 @@
         </div>
 
         <footer class="small">Stamp duty implemented with NSW tiered bands for illustrative purposes — always confirm with Revenue NSW for precise duty and concessions.</footer>
+        <footer class="small" style="margin-top:12px;color:#a33">
+          <strong>Disclaimer:</strong> This calculator is for informational purposes only and does not constitute financial advice. Please discuss your personal circumstances with a registered financial advisor before making any investment decisions.
+        </footer>
+        <div id="analysis" style="margin-top:24px;padding:16px;background:#f8fbff;border-radius:8px;border:1px solid #e2edf2">
+          <strong>Analysis:</strong>
+          <div id="analysis_text" style="margin-top:8px;color:#234">
+            <!-- Will be filled by JS -->
+          </div>
+        </div>
         <div style="margin-top:16px">
           <label><input id="include_lmi" type="checkbox" /> Estimate LMI if deposit &lt; 20%</label>
           <div class="small">Rough estimate only — actual LMI from lender.</div>
+        </div>
+        <div style="margin-top:16px">
+          <label><input id="include_depreciation" type="checkbox" /> Include depreciation (new build only)</label>
+          <div class="small">Unticked by default. Assumes investment is not a new build.</div>
         </div>
       </div>
 
@@ -217,6 +230,19 @@ let chartInstance = null;
 
 /* Main calculation */
 function updateAll(){
+      // Depreciation checkbox logic
+      const depreciationCheckbox = document.getElementById('include_depreciation');
+      const includeDepreciation = depreciationCheckbox ? depreciationCheckbox.checked : false;
+      // ...existing code...
+    // Calculate minimum weekly rent for cashflow positive
+    const analysis_loan_amount = Number(document.getElementById('out_loan').innerText.replace(/[^\d.]/g, '')) || 0;
+    const analysis_interest_rate = Number(document.getElementById('interest_rate').value) / 100;
+    const analysis_op_costs = Number(document.getElementById('out_opcosts').innerText.replace(/[^\d.]/g, '')) || 0;
+    const analysis_annual_interest = analysis_loan_amount * analysis_interest_rate;
+    const analysis_total_annual_expenses = analysis_op_costs + analysis_annual_interest;
+    const analysis_min_weekly_rent = Math.ceil(analysis_total_annual_expenses / 52);
+    document.getElementById('analysis_text').innerText =
+      `To be cashflow positive (cover all expenses), minimum weekly rent required is $${analysis_min_weekly_rent.toLocaleString()}.`;
   // Automatically tick LMI if deposit < 20%
   const deposit_pct_val = Number(document.getElementById('deposit_percent').value) || 20;
   const lmiCheckbox = document.getElementById('include_lmi');
@@ -323,10 +349,13 @@ function updateAll(){
   drawChart(chartData);
 
   // depreciation & tax
-  const buildingValue = Number($('building_value').value) || 0;
-  const div43 = Math.round(buildingValue * 0.025);
-  const div40 = Number($('div40_annual').value) || 0;
-  const depreciation = div43 + div40;
+  let depreciation = 0;
+  if (includeDepreciation) {
+    const buildingValue = Number($('building_value').value) || 0;
+    const div43 = Math.round(buildingValue * 0.025);
+    const div40 = Number($('div40_annual').value) || 0;
+    depreciation = div43 + div40;
+  }
   $('out_depreciation').innerText = '$' + fmt(depreciation);
 
   const taxRate = Number($('taxBracket').value) || 0.30;
@@ -377,7 +406,13 @@ async function exportPDF(){
   doc.text(`Generated: ${new Date().toLocaleString()}`, left, y);
   y += 14;
 
-  // Key inputs (two-column table style)
+  // Section: Key Inputs
+  doc.setFontSize(11);
+  doc.setTextColor(30,60,120);
+  doc.text('Key Inputs', left, y);
+  y += 14;
+  doc.setFontSize(10);
+  doc.setTextColor(20,50,60);
   const rows = [
     ['Purchase price', $('price').value ? '$' + fmt($('price').value) : '-'],
     ['Weekly rent', $('rent_week').value ? '$' + fmt($('rent_week').value) + ' /wk' : '-'],
@@ -387,18 +422,19 @@ async function exportPDF(){
     ['Loan term', $('loan_term').value + ' yrs'],
     ['Include LMI estimate', $('include_lmi').checked ? 'Yes' : 'No']
   ];
-
-  doc.setFontSize(10);
   rows.forEach(r=>{ doc.text(r[0], left, y); doc.text(String(r[1]), 320, y); y += 12; });
 
-  y += 6;
-  doc.setFillColor(240,246,255);
-  doc.rect(left-6, y-6, 520, 140, 'F'); // slightly smaller panel
+  y += 8;
+  // Section: Summary Metrics
+  doc.setFontSize(11);
+  doc.setTextColor(30,60,120);
+  doc.text('Summary Metrics', left, y);
+  y += 14;
   doc.setFontSize(10);
   doc.setTextColor(20,50,60);
+  doc.setFillColor(240,246,255);
+  doc.rect(left-6, y-6, 520, 170, 'F');
   let panelY = y;
-
-  // Summary metrics
   const metrics = [
     ['Deposit (cash)', $('out_deposit').innerText],
     ['Stamp duty (NSW)', $('out_stamp').innerText],
@@ -416,20 +452,29 @@ async function exportPDF(){
     ['Tax refund', $('out_tax_refund').innerText],
     ['After-tax cashflow (ann)', $('out_after_tax_cashflow').innerText]
   ];
-
   metrics.forEach(m=>{ doc.text(m[0], left, panelY); doc.text(String(m[1]), 320, panelY); panelY += 11; });
 
-  y = panelY + 10;
+  y = panelY + 14;
 
-  // Add chart below metrics (same page)
+  // Section: Chart
+  doc.setFontSize(11);
+  doc.setTextColor(30,60,120);
+  doc.text('Cashflow Chart', left, y);
+  y += 10;
   try{
     const canvas = document.getElementById('cashflowChart');
     const imgData = canvas.toDataURL('image/png', 1.0);
-    doc.setFontSize(12);
-    doc.text('Cashflow Chart', left, y);
-    const imgWidth = 400; const imgHeight = 180;
-    doc.addImage(imgData, 'PNG', left, y+10, imgWidth, imgHeight);
-  } catch(e){ console.warn('Chart capture failed for PDF:', e); }
+    const imgWidth = 400; const imgHeight = 160;
+    doc.addImage(imgData, 'PNG', left, y, imgWidth, imgHeight);
+    y += imgHeight + 18;
+  } catch(e){ console.warn('Chart capture failed for PDF:', e); y += 40; }
+
+  // Section: Disclaimer
+  doc.setFontSize(9);
+  doc.setTextColor(163,51,51);
+  const disclaimer = 'Disclaimer: This calculator is for informational purposes only and does not constitute financial advice. Please discuss your personal circumstances with a registered financial advisor before making any investment decisions.';
+  const disclaimerLines = doc.splitTextToSize(disclaimer, 500);
+  doc.text(disclaimerLines, left, y);
 
   doc.save('property-summary.pdf');
 }
