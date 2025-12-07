@@ -15,29 +15,210 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 
 <style>
-  :root{ --bg:#f4f7fb; --card:#ffffff; --accent:#1c7ed6; --muted:#5f7a86; --panel:#f6fbff }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:linear-gradient(180deg,#f7fafc 0%,var(--bg) 100%);color:#12343b;padding:28px}
-  .app{max-width:1100px;margin:0 auto}
-  header{display:flex;align-items:center;gap:16px;margin-bottom:20px}
-  header .brand{background:linear-gradient(135deg,var(--accent),#0b6aa0);color:white;padding:14px;border-radius:10px}
-  header h1{margin:0;font-size:20px} header p{margin:0;color:var(--muted);font-size:13px}
-  .grid{display:grid;grid-template-columns:1fr 420px;gap:20px}
-  .card{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 28px rgba(8,29,40,.06)}
-  label{display:block;font-weight:600;margin-top:12px;color:#13353a}
-  input[type="number"], select, input[type="text"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e2edf2;margin-top:6px;font-size:14px}
-  .small{font-size:12px;color:var(--muted);margin-top:6px}
-  .row{display:flex;gap:12px;margin-top:6px}.col{flex:1;min-width:0}
-  .controls{display:flex;gap:12px;margin-top:14px}
-  .btn{background:var(--accent);color:white;padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
-  .btn.secondary{background:#eef6fb;color:var(--accent);border:1px solid #d7ecff}
-  .results .line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed rgba(8,29,40,0.04)}
+  :root{ 
+    --bg:#f4f7fb; 
+    --card:#ffffff; 
+    --accent:#1c7ed6; 
+    --accent-hover:#1565c0;
+    --muted:#5f7a86; 
+    --panel:#f6fbff;
+    --success:#10b981;
+    --danger:#ef4444;
+    --warning:#f59e0b;
+    --border:#e2edf2;
+    --shadow: 0 8px 28px rgba(8,29,40,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;
+    background:linear-gradient(180deg,#f7fafc 0%,var(--bg) 100%);
+    color:#12343b;
+    padding:20px;
+    line-height:1.6;
+  }
+  .app{max-width:1200px;margin:0 auto}
+  
+  /* Header */
+  header{display:flex;align-items:center;gap:16px;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid var(--border)}
+  header .brand{background:linear-gradient(135deg,var(--accent),#0b6aa0);color:white;padding:16px;border-radius:12px;box-shadow:0 4px 12px rgba(28,126,214,0.3)}
+  header .brand strong{font-size:18px;display:block}
+  header h1{margin:0;font-size:22px;font-weight:700;color:#0b3b4b} 
+  header p{margin:4px 0 0 0;color:var(--muted);font-size:14px}
+  
+  /* Layout */
+  .grid{display:grid;grid-template-columns:1fr 480px;gap:24px;align-items:start}
+  .card{background:var(--card);border-radius:14px;padding:24px;box-shadow:var(--shadow);border:1px solid var(--border)}
+  
+  /* Section Headers */
+  .section-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 0;
+    margin:20px 0 12px 0;
+    border-bottom:2px solid var(--border);
+    cursor:pointer;
+    user-select:none;
+  }
+  .section-header h3{font-size:16px;font-weight:700;color:#0b3b4b;margin:0}
+  .section-header .toggle{font-size:18px;color:var(--muted);transition:transform 0.2s}
+  .section-header.collapsed .toggle{transform:rotate(-90deg)}
+  .section-content{overflow:hidden;transition:max-height 0.3s ease-out}
+  .section-content.collapsed{max-height:0 !important}
+  
+  /* Form Controls */
+  label{display:block;font-weight:600;margin-top:14px;color:#13353a;font-size:13px}
+  label.required::after{content:' *';color:var(--danger)}
+  input[type="number"], select, input[type="text"]{
+    width:100%;
+    padding:11px 14px;
+    border-radius:8px;
+    border:2px solid var(--border);
+    margin-top:6px;
+    font-size:14px;
+    transition:all 0.2s;
+    background:white;
+  }
+  input[type="number"]:focus, select:focus{
+    outline:none;
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(28,126,214,0.1);
+  }
+  input[type="number"]:hover, select:hover{border-color:#cbd5e1}
+  
+  /* Checkbox Styling */
+  .checkbox-wrapper{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-top:16px;
+    padding:12px;
+    background:var(--panel);
+    border-radius:8px;
+    border:1px solid var(--border);
+  }
+  .checkbox-wrapper input[type="checkbox"]{
+    width:20px;
+    height:20px;
+    cursor:pointer;
+    accent-color:var(--accent);
+  }
+  .checkbox-wrapper label{margin:0;font-weight:500;cursor:pointer;flex:1}
+  
+  .small{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+  .row{display:flex;gap:14px;margin-top:8px}
+  .col{flex:1;min-width:0}
+  
+  /* Buttons */
+  .controls{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+  .btn{
+    background:var(--accent);
+    color:white;
+    padding:12px 20px;
+    border-radius:8px;
+    border:none;
+    cursor:pointer;
+    font-weight:600;
+    font-size:14px;
+    transition:all 0.2s;
+    box-shadow:0 2px 8px rgba(28,126,214,0.2);
+  }
+  .btn:hover{background:var(--accent-hover);transform:translateY(-1px);box-shadow:0 4px 12px rgba(28,126,214,0.3)}
+  .btn:active{transform:translateY(0)}
+  .btn.secondary{
+    background:#eef6fb;
+    color:var(--accent);
+    border:2px solid var(--border);
+    box-shadow:none;
+  }
+  .btn.secondary:hover{background:#e0f2fe;border-color:var(--accent)}
+  
+  /* Results Panel */
+  .results-sticky{position:sticky;top:20px}
+  .results .line{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 0;
+    border-bottom:1px dashed rgba(8,29,40,0.06);
+  }
   .results .line:last-child{border-bottom:0}
+  .results .line.highlight{background:var(--panel);padding:10px 12px;border-radius:6px;margin:4px -12px}
   .kpi{font-size:20px;font-weight:700;color:#0b3b4b}
-  .chart-wrap{padding:12px;background:var(--panel);border-radius:10px;margin-top:12px}
-  canvas{width:100% !important;height:300px !important}
-  footer{margin-top:16px;color:var(--muted);font-size:13px}
-  @media(max-width:980px){.grid{grid-template-columns:1fr}}
+  .kpi.positive{color:var(--success)}
+  .kpi.negative{color:var(--danger)}
+  .kpi.neutral{color:var(--muted)}
+  
+  /* Yield Badges */
+  .yield-badges{
+    display:flex;
+    gap:12px;
+    margin-top:12px;
+    padding-top:12px;
+    border-top:1px solid var(--border);
+  }
+  .badge{
+    flex:1;
+    padding:10px;
+    background:var(--panel);
+    border-radius:8px;
+    text-align:center;
+    border:1px solid var(--border);
+  }
+  .badge-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+  .badge-value{font-size:18px;font-weight:700;color:var(--accent);margin-top:4px}
+  
+  /* Charts */
+  .chart-wrap{
+    padding:16px;
+    background:var(--panel);
+    border-radius:10px;
+    margin-top:16px;
+    border:1px solid var(--border);
+  }
+  .chart-title{font-size:14px;font-weight:600;margin-bottom:12px;color:#0b3b4b}
+  canvas{width:100% !important;height:280px !important}
+  
+  /* Info/Analysis Box */
+  .info-box{
+    margin-top:24px;
+    padding:16px;
+    background:linear-gradient(135deg,#f0f9ff 0%,#e0f2fe 100%);
+    border-radius:10px;
+    border-left:4px solid var(--accent);
+  }
+  .info-box strong{color:var(--accent);display:block;margin-bottom:6px;font-size:14px}
+  .info-box-content{color:#1e40af;font-size:14px;line-height:1.6}
+  
+  /* Footer/Disclaimer */
+  footer{
+    margin-top:20px;
+    color:var(--muted);
+    font-size:12px;
+    padding:12px;
+    background:rgba(95,122,134,0.05);
+    border-radius:8px;
+    line-height:1.6;
+  }
+  footer.warning{
+    background:rgba(239,68,68,0.1);
+    border-left:3px solid var(--danger);
+  }
+  
+  /* Mobile Responsive */
+  @media(max-width:1024px){
+    .grid{grid-template-columns:1fr}
+    .results-sticky{position:static}
+    body{padding:16px}
+    .card{padding:20px}
+    header{flex-direction:column;align-items:flex-start}
+  }
+  @media(max-width:640px){
+    .row{flex-direction:column;gap:8px}
+    .controls{flex-direction:column}
+    .btn{width:100%;text-align:center}
+    .yield-badges{flex-direction:column}
+  }
 </style>
 </head>
 <body>
@@ -53,149 +234,236 @@
     <div class="grid">
       <!-- LEFT: Inputs -->
       <div class="card">
-        <h3>Property & Loan Inputs</h3>
+        <h3 style="margin:0 0 16px 0;font-size:18px;color:#0b3b4b">Investment Details</h3>
 
-        <div class="row">
-          <div class="col">
-            <label>Purchase price (AUD)</label>
-            <input id="price" type="number" value="500000" step="1000" />
+        <!-- Core Property Details -->
+        <div class="section-header" data-section="property">
+          <h3>🏠 Property Details</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-property">
+          <div class="row">
+            <div class="col">
+              <label class="required">Purchase price (AUD)</label>
+              <input id="price" type="number" value="500000" step="1000" placeholder="500,000" />
+            </div>
+            <div class="col">
+              <label class="required">Weekly rent (AUD)</label>
+              <input id="rent_week" type="number" value="500" placeholder="500" />
+            </div>
           </div>
-          <div class="col">
-            <label>Weekly rent (AUD)</label>
-            <input id="rent_week" type="number" value="500" />
+
+          <div class="row">
+            <div class="col">
+              <label>Strata fees (per quarter)</label>
+              <input id="strata_qtr" type="number" value="1000" placeholder="1,000" />
+              <div class="small">Set to 0 if no strata/body corporate</div>
+            </div>
           </div>
         </div>
 
-        <div class="row">
-          <div class="col">
-            <label>Strata (per quarter)</label>
-            <input id="strata_qtr" type="number" value="1000" />
+        <!-- Financing -->
+        <div class="section-header" data-section="financing">
+          <h3>💰 Financing</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-financing">
+          <div class="row">
+            <div class="col">
+              <label class="required">Deposit (%)</label>
+              <input id="deposit_percent" type="number" value="20" min="5" max="80" />
+              <div class="small">Minimum 5%, typically 20% to avoid LMI</div>
+            </div>
           </div>
-          <div class="col">
-            <label>Deposit (%)</label>
-            <input id="deposit_percent" type="number" value="20" min="5" max="80" />
+
+          <div class="row">
+            <div class="col">
+              <label class="required">Interest rate (annual %)</label>
+              <input id="interest_rate" type="number" step="0.1" value="6.0" placeholder="6.0" />
+              <div class="small">Current typical rate: 6.0% - 7.5%</div>
+            </div>
+            <div class="col">
+              <label class="required">Loan term (years)</label>
+              <input id="loan_term" type="number" value="30" min="1" max="50" placeholder="30" />
+            </div>
+          </div>
+
+          <div class="checkbox-wrapper">
+            <input id="include_lmi" type="checkbox" />
+            <label for="include_lmi">Estimate LMI (Lenders Mortgage Insurance)</label>
+          </div>
+          <div class="small" style="margin-left:42px">Auto-enabled for deposits under 20%. This is a rough estimate only.</div>
+        </div>
+
+
+        <!-- Purchase Costs -->
+        <div class="section-header" data-section="costs">
+          <h3>📋 Purchase Costs</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-costs">
+          <div class="row">
+            <div class="col">
+              <label>Conveyancing / legal fees</label>
+              <input id="legal_fee" type="number" value="1500" placeholder="1,500" />
+            </div>
+            <div class="col">
+              <label>Building & pest inspection</label>
+              <input id="inspection_fee" type="number" value="400" placeholder="400" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>Loan application & valuation</label>
+              <input id="loan_fees" type="number" value="600" placeholder="600" />
+            </div>
+          </div>
+          <div class="small">Stamp duty is calculated automatically based on NSW rates</div>
+        </div>
+
+
+        <!-- Ongoing Expenses -->
+        <div class="section-header" data-section="expenses">
+          <h3>🔧 Ongoing Expenses</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-expenses">
+          <div class="row">
+            <div class="col">
+              <label>Property management fee (%)</label>
+              <input id="pm_pct" type="number" value="7" placeholder="7" step="0.5" />
+              <div class="small">Typical range: 5% - 10% of rental income</div>
+            </div>
+            <div class="col">
+              <label>Annual maintenance budget</label>
+              <input id="maintenance" type="number" value="1000" placeholder="1,000" />
+              <div class="small">Recommended: 0.5% - 1% of property value</div>
+            </div>
+          </div>
+          <div class="small">Council rates ($2,200/yr) and insurance ($400/yr) are included automatically</div>
+        </div>
+
+        <!-- Depreciation -->
+        <div class="section-header" data-section="depreciation">
+          <h3>📉 Depreciation</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-depreciation">
+          <div class="checkbox-wrapper">
+            <input id="include_depreciation" type="checkbox" />
+            <label for="include_depreciation">Include depreciation deductions (new builds only)</label>
+          </div>
+          <div class="small" style="margin-left:42px">Depreciation typically not available for older established properties</div>
+
+          <div class="row" style="margin-top:12px">
+            <div class="col">
+              <label>Building value (Division 43)</label>
+              <input id="building_value" type="number" value="150000" placeholder="150,000" />
+              <div class="small">Structural: 2.5% annually over 40 years</div>
+            </div>
+            <div class="col">
+              <label>Plant & equipment (Division 40)</label>
+              <input id="div40_annual" type="number" value="2000" placeholder="2,000" />
+              <div class="small">Annual claim for fixtures & fittings</div>
+            </div>
           </div>
         </div>
 
-        <div class="row">
-          <div class="col">
-            <label>Interest rate (annual %)</label>
-            <input id="interest_rate" type="number" step="0.1" value="6.0" />
-          </div>
-          <div class="col">
-            <label>Loan term (years)</label>
-            <input id="loan_term" type="number" value="30" min="1" max="50" />
-          </div>
+        <!-- Tax & Income -->
+        <div class="section-header" data-section="tax">
+          <h3>💵 Tax & Income</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-tax">
+          <label>Your marginal tax rate</label>
+          <select id="taxBracket">
+            <option value="0.30">30% — Taxable income $45,001 to $120,000</option>
+            <option value="0.37">37% — Taxable income $120,001 to $180,000</option>
+            <option value="0.45">45% — Taxable income $180,001+</option>
+          </select>
+          <div class="small">Includes Medicare Levy. Used to calculate negative gearing benefits.</div>
         </div>
 
-        <div class="row">
-          <div class="col">
-            <label>Conveyancing / legal (est)</label>
-            <input id="legal_fee" type="number" value="1500" />
-          </div>
-          <div class="col">
-            <label>Inspection / pest</label>
-            <input id="inspection_fee" type="number" value="400" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col">
-            <label>Loan application / valuation fees</label>
-            <input id="loan_fees" type="number" value="600" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="col">
-            <label>Property management (%)</label>
-            <input id="pm_pct" type="number" value="7" />
-          </div>
-          <div class="col">
-            <label>Maintenance allowance (ann.)</label>
-            <input id="maintenance" type="number" value="1000" />
-          </div>
-        </div>
-
-        <h3 style="margin-top:18px">Depreciation</h3>
-        <div class="row">
-          <div class="col">
-            <label>Estimated building (capital) value for Division 43 (AUD)</label>
-            <input id="building_value" type="number" value="150000" />
-          </div>
-          <div class="col">
-            <label>Estimated plant & equipment (Division 40) annual claim (AUD)</label>
-            <input id="div40_annual" type="number" value="2000" />
-          </div>
-        </div>
-
-        <h3 style="margin-top:18px">Tax & Income</h3>
-        <label>Tax bracket (select marginal rate)</label>
-        <select id="taxBracket">
-          <option value="0.30">30% (income ~$45k–$120k)</option>
-          <option value="0.37">37% (income ~$120k–$180k)</option>
-          <option value="0.45">45% (income ~$180k+)</option>
-        </select>
-
+        <!-- Action Buttons -->
         <div class="controls">
-          <button class="btn" id="calcBtn">Recalculate</button>
-          <button class="btn secondary" id="pdfBtn">Download PDF</button>
-          <button class="btn secondary" id="resetBtn">Reset</button>
+          <button class="btn" id="calcBtn">🔄 Recalculate</button>
+          <button class="btn secondary" id="pdfBtn">📄 Download PDF</button>
+          <button class="btn secondary" id="resetBtn">↺ Reset</button>
         </div>
 
-        <footer class="small">Stamp duty implemented with NSW tiered bands for illustrative purposes — always confirm with Revenue NSW for precise duty and concessions.</footer>
-        <footer class="small" style="margin-top:12px;color:#a33">
-          <strong>Disclaimer:</strong> This calculator is for informational purposes only and does not constitute financial advice. Please discuss your personal circumstances with a registered financial advisor before making any investment decisions.
-        </footer>
-        <div id="analysis" style="margin-top:24px;padding:16px;background:#f8fbff;border-radius:8px;border:1px solid #e2edf2">
-          <strong>Analysis:</strong>
-          <div id="analysis_text" style="margin-top:8px;color:#234">
+        <!-- Analysis Box -->
+        <div id="analysis" class="info-box">
+          <strong>💡 Cashflow Analysis</strong>
+          <div id="analysis_text" class="info-box-content">
             <!-- Will be filled by JS -->
           </div>
         </div>
-        <div style="margin-top:16px">
-          <label><input id="include_lmi" type="checkbox" /> Estimate LMI if deposit &lt; 20%</label>
-          <div class="small">Rough estimate only — actual LMI from lender.</div>
-        </div>
-        <div style="margin-top:16px">
-          <label><input id="include_depreciation" type="checkbox" /> Include depreciation (new build only)</label>
-          <div class="small">Unticked by default. Assumes investment is not a new build.</div>
-        </div>
+
+        <!-- Disclaimers -->
+        <footer class="small">Stamp duty calculated using NSW tiered bands for residential property transfers. Always confirm with Revenue NSW for precise duty calculations and available concessions.</footer>
+        <footer class="small warning">
+          <strong>⚠️ Disclaimer:</strong> This calculator is for informational and educational purposes only and does not constitute financial, investment, or tax advice. Results are estimates based on inputs provided. Please consult with a registered financial advisor, accountant, or tax professional before making any investment decisions.
+        </footer>
       </div>
 
       <!-- RIGHT: Results + Chart -->
-      <div class="card">
-        <h3>Summary</h3>
+      <div class="card results-sticky">
+        <h3 style="margin:0 0 20px 0;font-size:18px;color:#0b3b4b;border-bottom:2px solid var(--border);padding-bottom:12px">📊 Investment Summary</h3>
+        
+        <!-- Upfront Costs -->
+        <h4 style="font-size:14px;color:var(--muted);margin:16px 0 8px 0;text-transform:uppercase;letter-spacing:0.5px">💵 Upfront Costs</h4>
         <div id="results" class="results">
-          <div class="line"><div>Deposit (cash)</div><div class="kpi" id="out_deposit">$0</div></div>
-          <div class="line"><div>Stamp / Transfer duty (NSW)</div><div id="out_stamp">$0</div></div>
-          <div class="line"><div>Other upfront fees (convey, inspection, loan fees)</div><div id="out_fees">$0</div></div>
-          <div class="line"><div>LMI estimate (if applicable)</div><div id="out_lmi">$0</div></div>
-          <div class="line"><div><strong>Total upfront (approx)</strong></div><div class="kpi" id="out_upfront">$0</div></div>
-
-          <div style="height:10px"></div>
-          <div class="line"><div>Loan amount</div><div id="out_loan">$0</div></div>
-          <div class="line"><div>Monthly repayment (P+I est)</div><div id="out_monthly">$0</div></div>
-          <div class="line"><div>Annual rent</div><div id="out_rent_annual">$0</div></div>
-          <div class="line"><div>Annual operating costs</div><div id="out_opcosts">$0</div></div>
-          <div class="line"><div>Net income before interest</div><div id="out_net_before_interest">$0</div></div>
-          <div class="line"><div>Annual interest (est)</div><div id="out_interest">$0</div></div>
-          <div class="line"><div><strong>Net cashflow after interest (annual)</strong></div><div class="kpi" id="out_cashflow">$0</div></div>
-
-          <div style="height:8px"></div>
-          <div class="small">Gross yield: <span id="out_gross_yield">-</span> · Net yield (before interest): <span id="out_net_yield">-</span></div>
+          <div class="line"><div>Deposit (cash required)</div><div class="kpi" id="out_deposit">$0</div></div>
+          <div class="line"><div>Stamp duty (NSW)</div><div id="out_stamp">$0</div></div>
+          <div class="line"><div>Purchase fees & LMI</div><div id="out_fees">$0</div></div>
+          <div class="line highlight"><div><strong>💰 Total upfront capital</strong></div><div class="kpi" id="out_upfront">$0</div></div>
         </div>
 
+        <!-- Loan Details -->
+        <h4 style="font-size:14px;color:var(--muted);margin:20px 0 8px 0;text-transform:uppercase;letter-spacing:0.5px">🏦 Loan Details</h4>
+        <div class="results">
+          <div class="line"><div>Loan amount</div><div id="out_loan">$0</div></div>
+          <div class="line"><div>Monthly repayment (P&I)</div><div class="kpi" id="out_monthly">$0</div></div>
+          <div class="line"><div>Annual interest (Year 1)</div><div id="out_interest">$0</div></div>
+        </div>
+
+        <!-- Annual Cashflow -->
+        <h4 style="font-size:14px;color:var(--muted);margin:20px 0 8px 0;text-transform:uppercase;letter-spacing:0.5px">📈 Annual Cashflow</h4>
+        <div class="results">
+          <div class="line"><div>Rental income</div><div class="kpi positive" id="out_rent_annual">$0</div></div>
+          <div class="line"><div>Operating expenses</div><div class="kpi negative" id="out_opcosts">$0</div></div>
+          <div class="line"><div>Interest paid</div><div class="kpi negative" id="out_interest_display">$0</div></div>
+          <div class="line highlight"><div><strong>📊 Net cashflow (before tax)</strong></div><div class="kpi" id="out_cashflow">$0</div></div>
+        </div>
+
+        <!-- Yield Badges -->
+        <div class="yield-badges">
+          <div class="badge">
+            <div class="badge-label">Gross Yield</div>
+            <div class="badge-value" id="out_gross_yield">-</div>
+          </div>
+          <div class="badge">
+            <div class="badge-label">Net Yield</div>
+            <div class="badge-value" id="out_net_yield">-</div>
+          </div>
+        </div>
+
+        <!-- Chart -->
         <div class="chart-wrap">
+          <div class="chart-title">Annual Income & Expenses Breakdown</div>
           <canvas id="cashflowChart" aria-label="Cashflow chart"></canvas>
         </div>
 
-        <div class="card" style="margin-top:14px;padding:12px">
-          <h4 style="margin:0 0 8px 0">Tax & Depreciation</h4>
-          <div class="small">Annual depreciation (Div 43 + Div 40): <strong id="out_depreciation">$0</strong></div>
-          <div class="small">Total tax-deductible loss: <strong id="out_total_deduction">$0</strong></div>
-          <div class="small">Tax refund at selected rate: <strong id="out_tax_refund">$0</strong></div>
-          <div class="small">After-tax cashflow (annual): <strong id="out_after_tax_cashflow">$0</strong></div>
+        <!-- Tax & Depreciation -->
+        <div style="margin-top:20px;padding:16px;background:var(--panel);border-radius:10px;border:1px solid var(--border)">
+          <h4 style="font-size:14px;color:#0b3b4b;margin:0 0 12px 0">🧾 Tax & Negative Gearing</h4>
+          <div class="results">
+            <div class="line"><div>Annual depreciation</div><div id="out_depreciation">$0</div></div>
+            <div class="line"><div>Tax-deductible loss</div><div id="out_total_deduction">$0</div></div>
+            <div class="line"><div>Tax refund estimate</div><div class="kpi positive" id="out_tax_refund">$0</div></div>
+            <div class="line highlight"><div><strong>✅ After-tax cashflow</strong></div><div class="kpi" id="out_after_tax_cashflow">$0</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -373,7 +641,21 @@ function updateAll(){
   $('out_interest').innerText = '$' + fmt(annualInterest);
 
   const netAfterInterest = Math.round(netBeforeInterest - annualInterest);
-  $('out_cashflow').innerText = '$' + fmt(netAfterInterest);
+  $('out_cashflow').innerText = '$' + fmt(Math.abs(netAfterInterest));
+  $('out_interest_display').innerText = '$' + fmt(annualInterest);
+  
+  // Apply color coding to cashflow
+  const cashflowEl = $('out_cashflow');
+  cashflowEl.classList.remove('positive', 'negative', 'neutral');
+  if(netAfterInterest > 0) {
+    cashflowEl.classList.add('positive');
+    cashflowEl.innerText = '+$' + fmt(netAfterInterest);
+  } else if(netAfterInterest < 0) {
+    cashflowEl.classList.add('negative');
+    cashflowEl.innerText = '-$' + fmt(Math.abs(netAfterInterest));
+  } else {
+    cashflowEl.classList.add('neutral');
+  }
 
   // yields
   const grossYield = price > 0 ? (rentAnnual / price) * 100 : 0;
@@ -408,7 +690,20 @@ function updateAll(){
   $('out_tax_refund').innerText = '$' + fmt(taxRefund);
 
   const afterTaxCashflow = netAfterInterest + taxRefund;
-  $('out_after_tax_cashflow').innerText = '$' + fmt(afterTaxCashflow);
+  $('out_after_tax_cashflow').innerText = '$' + fmt(Math.abs(afterTaxCashflow));
+  
+  // Apply color coding to after-tax cashflow
+  const afterTaxEl = $('out_after_tax_cashflow');
+  afterTaxEl.classList.remove('positive', 'negative', 'neutral');
+  if(afterTaxCashflow > 0) {
+    afterTaxEl.classList.add('positive');
+    afterTaxEl.innerText = '+$' + fmt(afterTaxCashflow);
+  } else if(afterTaxCashflow < 0) {
+    afterTaxEl.classList.add('negative');
+    afterTaxEl.innerText = '-$' + fmt(Math.abs(afterTaxCashflow));
+  } else {
+    afterTaxEl.classList.add('neutral');
+  }
 
   // add tax refund into chart as separate dataset (append)
   const chartWithTax = {
@@ -545,25 +840,53 @@ document.querySelectorAll('input, select').forEach(el => {
 });
 
 /* Initialize */
-window.addEventListener('load', ()=>{ updateAll(); });
+window.addEventListener('load', ()=>{ 
+  updateAll(); 
+  
+  // Initialize collapsible sections
+  document.querySelectorAll('.section-header').forEach(header => {
+    const sectionName = header.dataset.section;
+    const content = document.getElementById(`section-${sectionName}`);
+    
+    // Set initial max-height for smooth transitions
+    if(content) {
+      content.style.maxHeight = content.scrollHeight + 'px';
+    }
+    
+    header.addEventListener('click', () => {
+      header.classList.toggle('collapsed');
+      if(content) {
+        if(header.classList.contains('collapsed')) {
+          content.style.maxHeight = '0';
+          content.classList.add('collapsed');
+        } else {
+          content.style.maxHeight = content.scrollHeight + 'px';
+          content.classList.remove('collapsed');
+        }
+      }
+    });
+  });
+});
 
 </script>
 
 </div>
-<!-- Capital Appreciation Panel (true bottom, after .app) -->
-</div>
-<div class="card" style="margin:32px auto 0 auto;max-width:1100px;background:#f6fbff;border:1px solid #e2edf2">
-  <h3>Capital Appreciation</h3>
+<!-- Capital Appreciation Panel -->
+<div class="card" style="margin:32px auto 0 auto;max-width:1200px">
+  <h3 style="margin:0 0 16px 0;font-size:18px;color:#0b3b4b">📈 Capital Appreciation Projection</h3>
   <div class="row">
     <div class="col">
-      <label>Expected capital gain per annum (%)</label>
-      <input id="capital_gain" type="number" value="3" min="0" max="20" step="0.1" />
-      <div class="small">Default is 3%. Adjust to model your scenario.</div>
+      <label>Expected annual capital growth rate (%)</label>
+      <input id="capital_gain" type="number" value="3" min="0" max="20" step="0.1" placeholder="3.0" />
+      <div class="small">Historical average: 3-5% per year. Adjust based on your market research and property type.</div>
     </div>
   </div>
   <div class="chart-wrap" style="margin-top:18px">
-    <h4>Property Value Over 20 Years</h4>
+    <div class="chart-title">Projected Property Value Over 20 Years</div>
     <canvas id="valueChart" aria-label="Property value chart"></canvas>
+  </div>
+  <div class="small" style="margin-top:12px;color:var(--muted)">
+    Note: This projection assumes constant growth. Actual property values fluctuate with market conditions.
   </div>
 </div>
 </body>
