@@ -500,44 +500,48 @@ const fmt = n => Number(n).toLocaleString('en-AU',{maximumFractionDigits:0});
 /* Chart instance holder */
 let chartInstance = null;
 
+/* Property Value Chart Drawing */
+function drawValueChart(data){
+  const ctx = document.getElementById('valueChart').getContext('2d');
+  if(window.valueChartInstance) window.valueChartInstance.destroy();
+  window.valueChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels,
+      datasets: [{
+        label: 'Property Value (AUD)',
+        data: data.values,
+        borderColor: '#1c7ed6',
+        backgroundColor: 'rgba(28,126,214,0.1)',
+        fill: true,
+        pointRadius: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: false, ticks: { callback: value => Intl.NumberFormat('en-AU').format(value) } }
+      }
+    }
+  });
+}
+
+/* Update capital appreciation chart */
+function updateCapitalAppreciation(){
+  const initialValue = Number(document.getElementById('price').value) || 0;
+  const capitalGainRate = Number(document.getElementById('capital_gain').value) / 100 || 0;
+  const years = 20;
+  let values = [initialValue];
+  for(let i=1; i<=years; i++){
+    values.push(values[i-1] * (1 + capitalGainRate));
+  }
+  const valueLabels = Array.from({length: years+1}, (_,i)=>`Year ${i}`);
+  drawValueChart({ labels: valueLabels, values });
+}
+
 /* Main calculation */
 function updateAll(){
-        // Capital appreciation chart logic
-        const initialValue = Number(document.getElementById('price').value) || 0;
-        const capitalGainRate = Number(document.getElementById('capital_gain').value) / 100 || 0;
-        const years = 20;
-        let values = [initialValue];
-        for(let i=1; i<=years; i++){
-          values.push(values[i-1] * (1 + capitalGainRate));
-        }
-        const valueLabels = Array.from({length: years+1}, (_,i)=>`Year ${i}`);
-        drawValueChart({ labels: valueLabels, values });
-      /* Property Value Chart Drawing */
-      function drawValueChart(data){
-        const ctx = document.getElementById('valueChart').getContext('2d');
-        if(window.valueChartInstance) window.valueChartInstance.destroy();
-        window.valueChartInstance = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: data.labels,
-            datasets: [{
-              label: 'Property Value (AUD)',
-              data: data.values,
-              borderColor: '#1c7ed6',
-              backgroundColor: 'rgba(28,126,214,0.1)',
-              fill: true,
-              pointRadius: 2
-            }]
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: {
-              y: { beginAtZero: false, ticks: { callback: value => Intl.NumberFormat('en-AU').format(value) } }
-            }
-          }
-        });
-      }
       // Depreciation checkbox logic
       const depreciationCheckbox = document.getElementById('include_depreciation');
       const includeDepreciation = depreciationCheckbox ? depreciationCheckbox.checked : false;
@@ -841,7 +845,8 @@ document.querySelectorAll('input, select').forEach(el => {
 
 /* Initialize */
 window.addEventListener('load', ()=>{ 
-  updateAll(); 
+  updateAll();
+  updateCapitalAppreciation(); // Initialize capital appreciation chart
   
   // Initialize collapsible sections
   document.querySelectorAll('.section-header').forEach(header => {
@@ -866,6 +871,12 @@ window.addEventListener('load', ()=>{
       }
     });
   });
+  
+  // Auto-update capital appreciation when price or capital gain changes
+  $('price').addEventListener('input', updateCapitalAppreciation);
+  $('price').addEventListener('change', updateCapitalAppreciation);
+  $('capital_gain').addEventListener('input', updateCapitalAppreciation);
+  $('capital_gain').addEventListener('change', updateCapitalAppreciation);
 });
 
 </script>
