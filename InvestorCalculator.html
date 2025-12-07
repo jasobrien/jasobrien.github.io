@@ -507,6 +507,25 @@
         </div>
       </div>
     </div>
+
+    <!-- Capital Appreciation Panel -->
+    <div class="card" style="margin:32px auto 0 auto;max-width:1200px">
+      <h3 style="margin:0 0 16px 0;font-size:18px;color:#0b3b4b">📈 Capital Appreciation Projection</h3>
+      <div class="row">
+        <div class="col">
+          <label>Expected annual capital growth rate (%)</label>
+          <input id="capital_gain" type="number" value="3" min="0" max="20" step="0.1" placeholder="3.0" />
+          <div class="small">Historical average: 3-5% per year. Adjust based on your market research and property type.</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="margin-top:18px">
+        <div class="chart-title">Projected Property Value Over 20 Years</div>
+        <canvas id="valueChart" aria-label="Property value chart"></canvas>
+      </div>
+      <div class="small" style="margin-top:12px;color:var(--muted)">
+        Note: This projection assumes constant growth. Actual property values fluctuate with market conditions.
+      </div>
+    </div>
     </div>
     <!-- End Investment Analysis Tab -->
 
@@ -1164,10 +1183,17 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   updateAll();
 });
 
-// auto update on input changes
-document.querySelectorAll('input, select').forEach(el => {
-  el.addEventListener('change', updateAll);
-  el.addEventListener('input', updateAll);
+// auto update on input changes (Investment tab only)
+const investorInputs = ['price', 'rent_week', 'strata_qtr', 'deposit_percent', 'interest_rate', 
+                        'loan_term', 'legal_fee', 'inspection_fee', 'loan_fees', 'pm_pct', 
+                        'maintenance', 'include_lmi', 'include_depreciation', 'tax_bracket',
+                        'building_value', 'building_age', 'plant_value', 'plant_life'];
+investorInputs.forEach(id => {
+  const el = $(id);
+  if(el) {
+    el.addEventListener('change', updateAll);
+    el.addEventListener('input', updateAll);
+  }
 });
 
 /* Initialize */
@@ -1247,32 +1273,35 @@ window.addEventListener('load', ()=>{
   });
   
   // Auto-update capital appreciation when price or capital gain changes
-  $('price').addEventListener('input', updateCapitalAppreciation);
-  $('price').addEventListener('change', updateCapitalAppreciation);
-  $('capital_gain').addEventListener('input', updateCapitalAppreciation);
-  $('capital_gain').addEventListener('change', updateCapitalAppreciation);
+  if($('price')) {
+    $('price').addEventListener('input', updateCapitalAppreciation);
+    $('price').addEventListener('change', updateCapitalAppreciation);
+  }
+  if($('capital_gain')) {
+    $('capital_gain').addEventListener('input', updateCapitalAppreciation);
+    $('capital_gain').addEventListener('change', updateCapitalAppreciation);
+  }
+  
+  // Initialize affordability tab on first switch
+  let affordabilityInitialized = false;
+  const originalTabClick = document.querySelectorAll('.tab');
+  originalTabClick.forEach(tab => {
+    if(tab.dataset.tab === 'affordability') {
+      const originalListener = tab.onclick;
+      tab.addEventListener('click', () => {
+        if(!affordabilityInitialized) {
+          setTimeout(() => {
+            updateBuyerCalcs();
+            affordabilityInitialized = true;
+          }, 100);
+        }
+      });
+    }
+  });
 });
 
 </script>
 
-</div>
-<!-- Capital Appreciation Panel -->
-<div class="card" style="margin:32px auto 0 auto;max-width:1200px">
-  <h3 style="margin:0 0 16px 0;font-size:18px;color:#0b3b4b">📈 Capital Appreciation Projection</h3>
-  <div class="row">
-    <div class="col">
-      <label>Expected annual capital growth rate (%)</label>
-      <input id="capital_gain" type="number" value="3" min="0" max="20" step="0.1" placeholder="3.0" />
-      <div class="small">Historical average: 3-5% per year. Adjust based on your market research and property type.</div>
-    </div>
-  </div>
-  <div class="chart-wrap" style="margin-top:18px">
-    <div class="chart-title">Projected Property Value Over 20 Years</div>
-    <canvas id="valueChart" aria-label="Property value chart"></canvas>
-  </div>
-  <div class="small" style="margin-top:12px;color:var(--muted)">
-    Note: This projection assumes constant growth. Actual property values fluctuate with market conditions.
-  </div>
 </div>
 </body>
 </html>

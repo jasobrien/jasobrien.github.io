@@ -668,6 +668,530 @@ test('UI Buyer: Break-even calculation completes', 'ui', async () => {
   }
 });
 
+test('UI Buyer: Serviceability check with high DTI', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const buyerTab = calc.document.querySelector('[data-tab="affordability"]');
+  if (buyerTab) {
+    buyerTab.click();
+    await wait(200);
+    
+    // High debt scenario
+    calc.$('buyer_price').value = 800000;
+    calc.$('buyer_deposit_amount').value = 160000;
+    calc.$('buyer_income').value = 100000; // Low income relative to loan
+    calc.$('buyer_living_expenses').value = 4000;
+    calc.updateBuyerCalcs();
+    await wait(100);
+    
+    const dtiText = calc.$('buyer_out_dti').innerText;
+    const dti = parseFloat(dtiText);
+    assert(dti > 30, `Expected DTI > 30% for high debt scenario, got ${dti}%`);
+    
+    const serviceText = calc.$('buyer_out_serviceable').innerText;
+    assert(serviceText.includes('Warning') || serviceText.includes('High'), 
+           `Expected serviceability warning, got "${serviceText}"`);
+  }
+});
+
+test('UI Buyer: Surplus funds with low debt', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const buyerTab = calc.document.querySelector('[data-tab="affordability"]');
+  if (buyerTab) {
+    buyerTab.click();
+    await wait(200);
+    
+    // Low debt scenario
+    calc.$('buyer_price').value = 400000;
+    calc.$('buyer_deposit_amount').value = 100000;
+    calc.$('buyer_income').value = 150000; // High income
+    calc.$('buyer_living_expenses').value = 2500;
+    calc.$('buyer_other_debts').value = 0;
+    calc.updateBuyerCalcs();
+    await wait(100);
+    
+    const surplusText = calc.$('buyer_out_monthly_surplus').innerText;
+    const surplus = parseInt(surplusText.replace(/[^0-9-]/g, ''));
+    assert(surplus > 0, `Expected positive surplus with high income, got $${surplus}`);
+  }
+});
+
+test('UI Buyer: All outputs populated on tab switch', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const buyerTab = calc.document.querySelector('[data-tab="affordability"]');
+  if (buyerTab) {
+    buyerTab.click();
+    await wait(300);
+    
+    // Check all buyer outputs exist and are populated
+    const buyerOutputs = ['buyer_out_total_price', 'buyer_out_loan', 'buyer_out_monthly', 
+                         'buyer_out_dti', 'buyer_out_shortfall'];
+    
+    for(const id of buyerOutputs) {
+      const el = calc.$(id);
+      if (el) {
+        const text = el.innerText;
+        assert(text && text.length > 0, `${id} should have content`);
+        assert(!text.includes('NaN'), `${id} should not contain NaN`);
+      }
+    }
+  }
+});
+
+test('UI Buyer: Stress rate calculation increases repayment', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const buyerTab = calc.document.querySelector('[data-tab="affordability"]');
+  if (buyerTab) {
+    buyerTab.click();
+    await wait(200);
+    
+    calc.$('buyer_price').value = 500000;
+    calc.$('buyer_deposit_amount').value = 100000;
+    calc.$('buyer_interest_rate').value = 6.0;
+    calc.$('buyer_stress_rate').value = 8.5; // Stress rate higher
+    calc.updateBuyerCalcs();
+    await wait(100);
+    
+    const stressRepayText = calc.$('buyer_out_stress_repay').innerText;
+    const stressRepay = parseInt(stressRepayText.replace(/[^0-9]/g, ''));
+    
+    const monthlyText = calc.$('buyer_out_monthly').innerText;
+    const monthly = parseInt(monthlyText.replace(/[^0-9]/g, ''));
+    
+    assert(stressRepay > monthly, 
+           `Stress repayment ($${stressRepay}) should be > actual ($${monthly})`);
+  }
+});
+
+// ============================================================================
+// EDGE CASE AND VALIDATION TESTS
+// ============================================================================
+
+test('Edge Case: Zero price', 'calculation', () => {
+  const calc = getCalculator();
+  const duty = calc.window.calcNSWDuty(0);
+  assert(duty === 0, `Expected $0 duty for $0 price, got $${duty}`);
+});
+
+test('Edge Case: Extremely high price', 'calculation', () => {
+  const calc = getCalculator();
+  const duty = calc.window.calcNSWDuty(5000000);
+  assert(duty > 0, `Should calculate duty for $5M property`);
+  assert(duty > 200000, `$5M property duty should be > $200k, got $${duty}`);
+});
+
+test('Edge Case: Very low interest rate', 'calculation', () => {
+  const calc = getCalculator();
+  const P = 500000;
+  const r = 0.01 / 100 / 12; // 0.01% annual
+  const n = 30 * 12;
+  
+  if (r === 0) {
+    return; // Skip if exactly zero
+  }
+  
+  const M = P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  assert(!isNaN(M), 'Should handle very low interest rates');
+  assert(M > 0, 'Payment should be positive');
+});
+
+test('Edge Case: Very high interest rate', 'calculation', () => {
+  const calc = getCalculator();
+  const P = 500000;
+  const r = 20 / 100 / 12; // 20% annual
+  const n = 30 * 12;
+  
+  const M = P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  assert(!isNaN(M), 'Should handle high interest rates');
+  assert(M > 8000, 'Monthly payment should be very high (>$8k)');
+});
+
+test('Edge Case: Very short loan term', 'calculation', () => {
+  const calc = getCalculator();
+  const P = 400000;
+  const r = 6 / 100 / 12;
+  const n = 5 * 12; // 5 years
+  
+  const M = P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+  assert(!isNaN(M), 'Should handle short loan terms');
+  assert(M > 7000, 'Short term = high monthly payment (>$7k)');
+});
+
+test('Edge Case: Negative rent (invalid input)', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('rent_week').value = -100;
+  calc.updateAll();
+  await wait(100);
+  
+  // Should not crash, should handle gracefully
+  const yieldText = calc.$('out_gross_yield').innerText;
+  assert(!yieldText.includes('NaN'), 'Should handle negative rent gracefully');
+});
+
+test('Edge Case: 100% deposit', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('deposit_percent').value = 100;
+  calc.updateAll();
+  await wait(100);
+  
+  const loanText = calc.$('out_loan').innerText;
+  const loan = parseInt(loanText.replace(/[^0-9]/g, '')) || 0;
+  assert(loan === 0, `Expected $0 loan with 100% deposit, got $${loan}`);
+  
+  const monthlyText = calc.$('out_monthly').innerText;
+  const monthly = parseInt(monthlyText.replace(/[^0-9]/g, '')) || 0;
+  assert(monthly === 0, `Expected $0 monthly payment with 100% deposit, got $${monthly}`);
+});
+
+test('Edge Case: 0% deposit', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('deposit_percent').value = 0;
+  calc.updateAll();
+  await wait(100);
+  
+  const loanText = calc.$('out_loan').innerText;
+  const loan = parseInt(loanText.replace(/[^0-9]/g, ''));
+  assert(loan === 500000, `Expected $500k loan with 0% deposit, got $${loan}`);
+});
+
+test('Validation: All outputs are numbers or currency', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 550000;
+  calc.updateAll();
+  await wait(200);
+  
+  const outputs = calc.document.querySelectorAll('[id^="out_"]');
+  const invalidOutputs = [];
+  
+  outputs.forEach(el => {
+    const text = el.innerText;
+    // Skip empty or dash values
+    if (text === '' || text === '-' || text === 'N/A') return;
+    
+    // Check for invalid patterns
+    if (text.includes('undefined') || text.includes('NaN') || text.includes('Infinity')) {
+      invalidOutputs.push(`${el.id}: "${text}"`);
+    }
+  });
+  
+  assert(invalidOutputs.length === 0, `Invalid outputs found: ${invalidOutputs.join(', ')}`);
+});
+
+test('Validation: Percentage outputs are in valid range', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('rent_week').value = 500;
+  calc.updateAll();
+  await wait(100);
+  
+  const yieldText = calc.$('out_gross_yield').innerText;
+  const yieldValue = parseFloat(yieldText);
+  assert(yieldValue >= 0 && yieldValue <= 100, `Yield should be 0-100%, got ${yieldValue}%`);
+  
+  const netYieldText = calc.$('out_net_yield').innerText;
+  const netYieldValue = parseFloat(netYieldText);
+  assert(netYieldValue >= -50 && netYieldValue <= 100, `Net yield should be reasonable, got ${netYieldValue}%`);
+});
+
+test('Validation: LVR calculation is within bounds', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 600000;
+  calc.$('deposit_percent').value = 25;
+  calc.updateAll();
+  await wait(100);
+  
+  const lvrText = calc.$('out_lvr').innerText;
+  const lvr = parseFloat(lvrText);
+  assert(lvr >= 0 && lvr <= 100, `LVR should be 0-100%, got ${lvr}%`);
+  assert(lvr === 75, `Expected 75% LVR with 25% deposit, got ${lvr}%`);
+});
+
+// ============================================================================
+// TAB SWITCHING AND UI INTERACTION TESTS
+// ============================================================================
+
+test('UI Interaction: Tab switching works between Investment and Affordability', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const investmentTab = calc.document.querySelector('[data-tab="investment"]');
+  const affordabilityTab = calc.document.querySelector('[data-tab="affordability"]');
+  
+  assert(investmentTab, 'Investment tab button should exist');
+  assert(affordabilityTab, 'Affordability tab button should exist');
+  
+  // Switch to affordability
+  affordabilityTab.click();
+  await wait(300);
+  
+  const affordabilityContent = calc.$('tab-affordability');
+  assert(affordabilityContent.classList.contains('active'), 'Affordability tab content should be active');
+  
+  // Switch back to investment
+  investmentTab.click();
+  await wait(300);
+  
+  const investmentContent = calc.$('tab-investment');
+  assert(investmentContent.classList.contains('active'), 'Investment tab content should be active');
+});
+
+test('UI Interaction: Collapsible sections expand and collapse', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const headers = calc.document.querySelectorAll('.section-header');
+  assert(headers.length > 0, 'Should have collapsible section headers');
+  
+  const firstHeader = headers[0];
+  const firstBody = firstHeader.nextElementSibling;
+  
+  // Initially should be expanded
+  const initialDisplay = window.getComputedStyle(firstBody).display;
+  
+  // Click to toggle
+  firstHeader.click();
+  await wait(100);
+  
+  const afterClick = window.getComputedStyle(firstBody).display;
+  assert(initialDisplay !== afterClick, 'Clicking header should toggle section visibility');
+});
+
+test('UI Interaction: Calculate button triggers update', 'ui', async () => {
+  const calc = getCalculator();
+  
+  calc.$('price').value = 777777;
+  calc.$('calcBtn').click();
+  await wait(200);
+  
+  const stampText = calc.$('out_stamp').innerText;
+  assert(!stampText.includes('NaN'), 'Calculate button should trigger valid calculation');
+  assert(stampText.length > 0, 'Calculate button should populate outputs');
+});
+
+test('UI Interaction: Reset button restores defaults', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Change values
+  calc.$('price').value = 999999;
+  calc.$('rent_week').value = 999;
+  calc.updateAll();
+  await wait(100);
+  
+  // Reset
+  calc.document.getElementById('resetBtn').click();
+  await wait(200);
+  
+  const price = calc.$('price').value;
+  assert(price == 650000, `Expected default price 650000, got ${price}`);
+  
+  const rent = calc.$('rent_week').value;
+  assert(rent == 500, `Expected default rent 500, got ${rent}`);
+});
+
+test('UI Interaction: PDF button exists and is clickable', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const pdfBtn = calc.document.getElementById('pdfBtn');
+  assert(pdfBtn, 'PDF button should exist');
+  assert(!pdfBtn.disabled, 'PDF button should not be disabled');
+  
+  // Note: We don't actually click it because jsPDF might not work in test iframe
+  // But we verify the button and its handler exist
+});
+
+// ============================================================================
+// CHART TESTS
+// ============================================================================
+
+test('Chart: Cashflow chart renders with correct data', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('rent_week').value = 500;
+  calc.updateAll();
+  await wait(300);
+  
+  assert(calc.window.chartInstance, 'Cashflow chart instance should exist');
+  const chart = calc.window.chartInstance;
+  assert(chart.data.labels.length > 0, 'Chart should have labels');
+  assert(chart.data.datasets.length > 0, 'Chart should have datasets');
+  
+  // Check for expected labels
+  const labels = chart.data.labels;
+  assert(labels.includes('Rental Income'), 'Chart should include Rental Income');
+  assert(labels.includes('Loan Repayment'), 'Chart should include Loan Repayment');
+});
+
+test('Chart: Capital appreciation chart has 20-year projection', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 600000;
+  calc.$('capital_gain').value = 4;
+  calc.updateCapitalAppreciation();
+  await wait(300);
+  
+  assert(calc.window.valueChartInstance, 'Capital appreciation chart should exist');
+  const chart = calc.window.valueChartInstance;
+  const data = chart.data.datasets[0].data;
+  
+  assert(data.length === 21, `Expected 21 years (0-20), got ${data.length}`);
+  assert(data[0] === 600000, `Year 0 should be $600k, got $${data[0]}`);
+  
+  // Check that values increase with positive growth
+  assert(data[20] > data[0], 'Property value should increase over 20 years');
+});
+
+test('Chart: Negative capital growth works correctly', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('capital_gain').value = -2; // Negative growth
+  calc.updateCapitalAppreciation();
+  await wait(300);
+  
+  const chart = calc.window.valueChartInstance;
+  const data = chart.data.datasets[0].data;
+  
+  assert(data[20] < data[0], 'Property value should decrease with negative growth');
+  assert(data[20] > 0, 'Property value should remain positive');
+});
+
+test('Chart: Zero capital growth maintains constant value', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('capital_gain').value = 0;
+  calc.updateCapitalAppreciation();
+  await wait(300);
+  
+  const chart = calc.window.valueChartInstance;
+  const data = chart.data.datasets[0].data;
+  
+  assert(data[0] === 500000, 'Year 0 should be $500k');
+  assert(data[20] === 500000, 'Year 20 should remain $500k with 0% growth');
+});
+
+// ============================================================================
+// STRESS TESTS AND REAL-WORLD SCENARIOS
+// ============================================================================
+
+test('Stress: Rapid consecutive updates', 'ui', async () => {
+  const calc = getCalculator();
+  
+  for (let i = 0; i < 10; i++) {
+    calc.$('price').value = 400000 + (i * 50000);
+    calc.updateAll();
+  }
+  
+  await wait(300);
+  
+  const stampText = calc.$('out_stamp').innerText;
+  assert(!stampText.includes('NaN'), 'Should handle rapid updates without errors');
+});
+
+test('Stress: Switching tabs repeatedly', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const investmentTab = calc.document.querySelector('[data-tab="investment"]');
+  const affordabilityTab = calc.document.querySelector('[data-tab="affordability"]');
+  
+  for (let i = 0; i < 5; i++) {
+    affordabilityTab.click();
+    await wait(100);
+    investmentTab.click();
+    await wait(100);
+  }
+  
+  // Should still work
+  calc.updateAll();
+  await wait(200);
+  
+  const stampText = calc.$('out_stamp').innerText;
+  assert(!stampText.includes('NaN'), 'Should handle repeated tab switching');
+});
+
+test('Real-world: Sydney median house price scenario', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Sydney median ~$1.4M, rental yield ~2.5%
+  calc.$('price').value = 1400000;
+  calc.$('rent_week').value = 700; // ~2.6% yield
+  calc.$('deposit_percent').value = 20;
+  calc.$('interest_rate').value = 6.5;
+  calc.updateAll();
+  await wait(200);
+  
+  const stampText = calc.$('out_stamp').innerText;
+  const stamp = parseInt(stampText.replace(/[^0-9]/g, ''));
+  assert(stamp > 60000, `Expected high stamp duty for $1.4M, got $${stamp}`);
+  
+  const cashflowEl = calc.$('out_cashflow');
+  const isNegative = cashflowEl.classList.contains('negative');
+  assert(isNegative, 'Sydney median should show negative cashflow (low yield)');
+});
+
+test('Real-world: Regional high-yield property', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Regional property: $350k with 6% yield
+  calc.$('price').value = 350000;
+  calc.$('rent_week').value = 400; // ~6% yield
+  calc.$('deposit_percent').value = 20;
+  calc.$('interest_rate').value = 6.5;
+  calc.updateAll();
+  await wait(200);
+  
+  const yieldText = calc.$('out_gross_yield').innerText;
+  const yieldValue = parseFloat(yieldText);
+  assert(yieldValue > 5.5, `Expected high yield >5.5%, got ${yieldValue}%`);
+  
+  // May still be negative due to expenses
+  const cashflowText = calc.$('out_cashflow').innerText;
+  assert(!cashflowText.includes('NaN'), 'Should calculate cashflow correctly');
+});
+
+test('Real-world: First home buyer with LMI', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // FHB: $600k property, 10% deposit
+  calc.$('price').value = 600000;
+  calc.$('deposit_percent').value = 10;
+  calc.$('interest_rate').value = 6.2;
+  calc.updateAll();
+  await wait(200);
+  
+  const lmiChecked = calc.$('include_lmi').checked;
+  assert(lmiChecked, 'LMI should be enabled for 10% deposit');
+  
+  const lmiText = calc.$('out_lmi').innerText;
+  const lmi = parseInt(lmiText.replace(/[^0-9]/g, ''));
+  assert(lmi > 10000, `Expected significant LMI, got $${lmi}`);
+});
+
+test('Real-world: Investor with depreciation benefits', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // New apartment: $550k, 2-year-old building
+  calc.$('price').value = 550000;
+  calc.$('rent_week').value = 500;
+  calc.$('deposit_percent').value = 20;
+  calc.$('include_depreciation').checked = true;
+  calc.$('building_value').value = 400000;
+  calc.$('building_age').value = 2;
+  calc.$('plant_value').value = 50000;
+  calc.$('taxBracket').value = 0.37;
+  calc.updateAll();
+  await wait(200);
+  
+  const depText = calc.$('out_depreciation').innerText;
+  const dep = parseInt(depText.replace(/[^0-9]/g, ''));
+  assert(dep > 8000, `Expected significant depreciation, got $${dep}`);
+  
+  const refundText = calc.$('out_tax_refund').innerText;
+  const refund = parseInt(refundText.replace(/[^0-9]/g, ''));
+  assert(refund > 0, `Expected tax refund with negative gearing, got $${refund}`);
+});
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
