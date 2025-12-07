@@ -1,0 +1,174 @@
+{
+  "testData": {
+    "stampDuty": [
+      {
+        "description": "First home buyer - lower bracket",
+        "price": 16000,
+        "expected": 200
+      },
+      {
+        "description": "Mid-range property",
+        "price": 500000,
+        "expected": 17990,
+        "tolerance": 10
+      },
+      {
+        "description": "Luxury property",
+        "price": 2000000,
+        "expected": 93045,
+        "tolerance": 50
+      }
+    ],
+    "loanRepayments": [
+      {
+        "description": "Standard 30-year loan",
+        "principal": 400000,
+        "rate": 6.0,
+        "years": 30,
+        "expectedMonthly": 2398,
+        "tolerance": 5
+      },
+      {
+        "description": "Higher rate, shorter term",
+        "principal": 500000,
+        "rate": 7.0,
+        "years": 25,
+        "expectedMonthly": 3535,
+        "tolerance": 5
+      },
+      {
+        "description": "Large loan, standard terms",
+        "principal": 800000,
+        "rate": 6.5,
+        "years": 30,
+        "expectedMonthly": 5057,
+        "tolerance": 10
+      }
+    ],
+    "yields": [
+      {
+        "description": "Good investment property yield",
+        "price": 500000,
+        "weeklyRent": 500,
+        "expectedGrossYield": 5.2,
+        "tolerance": 0.1
+      },
+      {
+        "description": "Inner city apartment - lower yield",
+        "price": 800000,
+        "weeklyRent": 577,
+        "expectedGrossYield": 3.75,
+        "tolerance": 0.1
+      },
+      {
+        "description": "Regional high-yield property",
+        "price": 300000,
+        "weeklyRent": 350,
+        "expectedGrossYield": 6.07,
+        "tolerance": 0.1
+      }
+    ],
+    "serviceability": [
+      {
+        "description": "Comfortable DTI - should pass",
+        "income": 120000,
+        "loanAmount": 480000,
+        "rate": 6.5,
+        "years": 30,
+        "otherDebts": 500,
+        "livingExpenses": 3000,
+        "expectedDTI": 45,
+        "tolerance": 5,
+        "shouldPass": false
+      },
+      {
+        "description": "Tight but acceptable DTI",
+        "income": 100000,
+        "loanAmount": 400000,
+        "rate": 6.0,
+        "years": 30,
+        "otherDebts": 0,
+        "livingExpenses": 2500,
+        "expectedDTI": 57,
+        "tolerance": 5,
+        "shouldPass": false
+      },
+      {
+        "description": "Good DTI - should easily pass",
+        "income": 150000,
+        "loanAmount": 500000,
+        "rate": 6.5,
+        "years": 30,
+        "otherDebts": 300,
+        "livingExpenses": 3500,
+        "expectedDTI": 40,
+        "tolerance": 5,
+        "shouldPass": true
+      }
+    ],
+    "scenarios": [
+      {
+        "name": "Positive cashflow investment",
+        "inputs": {
+          "price": 400000,
+          "weeklyRent": 550,
+          "depositPercent": 20,
+          "interestRate": 6.0,
+          "strata": 1000,
+          "maintenance": 1000
+        },
+        "expectedResults": {
+          "cashflowPositive": true,
+          "grossYield": ">5%",
+          "monthlyRepayment": "<2000"
+        }
+      },
+      {
+        "name": "Negative gearing scenario",
+        "inputs": {
+          "price": 700000,
+          "weeklyRent": 500,
+          "depositPercent": 20,
+          "interestRate": 6.5,
+          "strata": 1200,
+          "maintenance": 2000
+        },
+        "expectedResults": {
+          "cashflowPositive": false,
+          "taxRefund": ">0",
+          "afterTaxCashflow": "improved"
+        }
+      }
+    ]
+  },
+  "knownIssues": [
+    {
+      "issue": "LMI calculation is heuristic only",
+      "severity": "medium",
+      "notes": "Actual LMI varies significantly by lender. Current calculation is 0.5%-3% of loan based on LVR."
+    },
+    {
+      "issue": "Council rates and insurance are fixed estimates",
+      "severity": "low",
+      "notes": "Using $2,200/year for rates and $400-1200/year for insurance. Should be configurable."
+    },
+    {
+      "issue": "Depreciation assumes new build eligibility",
+      "severity": "low",
+      "notes": "Checkbox must be manually enabled. Most properties don't qualify for full depreciation."
+    }
+  ],
+  "testEnvironment": {
+    "dateGenerated": "2025-12-07",
+    "calculatorVersion": "2.0",
+    "nswStampDutyRates": "Current as of 2025",
+    "assumptions": {
+      "councilRates": 2200,
+      "insurance": 400,
+      "managementFee": "7% of rent",
+      "div43Rate": "2.5% per year",
+      "capitalGrowthDefault": "3% per year",
+      "sellingCosts": "3% of sale price"
+    }
+  }
+}

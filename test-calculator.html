@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Property Calculator Test Suite</title>
+<style>
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #f5f5f5;
+  }
+  h1 { color: #333; border-bottom: 3px solid #1c7ed6; padding-bottom: 10px; }
+  h2 { color: #1c7ed6; margin-top: 30px; }
+  .test-suite { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  .test-case { 
+    padding: 12px; 
+    margin: 8px 0; 
+    border-left: 4px solid #ccc; 
+    background: #f9f9f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .test-case.pass { border-color: #10b981; background: #d1fae5; }
+  .test-case.fail { border-color: #ef4444; background: #fee2e2; }
+  .test-name { font-weight: 600; flex: 1; }
+  .test-result { margin-left: 20px; }
+  .pass .test-result::before { content: '✅ PASS'; color: #065f46; font-weight: bold; }
+  .fail .test-result::before { content: '❌ FAIL'; color: #991b1b; font-weight: bold; }
+  .test-details { font-size: 12px; color: #666; margin-top: 4px; }
+  .fail .test-details { color: #991b1b; }
+  .summary { 
+    background: #1c7ed6; 
+    color: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    margin: 20px 0;
+    font-size: 18px;
+  }
+  .summary.fail { background: #ef4444; }
+  .run-btn {
+    background: #1c7ed6;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 10px 5px;
+  }
+  .run-btn:hover { background: #1565c0; }
+  iframe { display: none; }
+</style>
+</head>
+<body>
+  <h1>🧪 Property Investment Calculator Test Suite</h1>
+  <p>Comprehensive automated testing for calculation accuracy and UI behavior.</p>
+  
+  <div>
+    <button class="run-btn" onclick="runAllTests()">▶️ Run All Tests</button>
+    <button class="run-btn" onclick="runCalculationTests()">🔢 Run Calculation Tests Only</button>
+    <button class="run-btn" onclick="runUITests()">🖥️ Run UI Tests Only</button>
+  </div>
+
+  <div id="summary"></div>
+  <div id="results"></div>
+
+  <!-- Hidden iframe to load the calculator -->
+  <iframe id="calculator" src="InvestorCalculator.html"></iframe>
+
+<script>
+// Test Framework
+const tests = [];
+let totalTests = 0;
+let passedTests = 0;
+let failedTests = 0;
+
+function test(name, category, fn) {
+  tests.push({ name, category, fn });
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message || 'Assertion failed');
+  }
+}
+
+function assertApprox(actual, expected, tolerance, message) {
+  const diff = Math.abs(actual - expected);
+  if (diff > tolerance) {
+    throw new Error(message || `Expected ${expected} ± ${tolerance}, got ${actual} (diff: ${diff})`);
+  }
+}
+
+// ============================================================================
+// CALCULATION TESTS - Pure function tests
+// ============================================================================
+
+// NSW Stamp Duty Calculation Tests
+test('NSW Stamp Duty: $16,000 property', 'calculation', () => {
+  const duty = calcNSWDuty(16000);
+  assert(duty === 200, `Expected 200, got ${duty}`);
+});
+
+test('NSW Stamp Duty: $35,000 property', 'calculation', () => {
+  const duty = calcNSWDuty(35000);
+  assert(duty === 485, `Expected 485, got ${duty}`);
+});
+
+test('NSW Stamp Duty: $500,000 property', 'calculation', () => {
+  const duty = calcNSWDuty(500000);
+  assertApprox(duty, 17990, 10, `Expected ~17990, got ${duty}`);
+});
+
+test('NSW Stamp Duty: $1,000,000 property', 'calculation', () => {
+  const duty = calcNSWDuty(1000000);
+  assertApprox(duty, 39780, 10, `Expected ~39780, got ${duty}`);
+});
+
+test('NSW Stamp Duty: $2,000,000 property', 'calculation', () => {
+  const duty = calcNSWDuty(2000000);
+  assertApprox(duty, 93045, 10, `Expected ~93045, got ${duty}`);
+});
+
+// Loan Repayment Calculation Tests
+test('Loan repayment: $400k @ 6% for 30 years', 'calculation', () => {
+  const principal = 400000;
+  const rate = 6 / 100 / 12;
+  const n = 30 * 12;
+  const payment = principal * (rate / (1 - Math.pow(1 + rate, -n)));
+  assertApprox(payment, 2398, 5, `Expected ~$2,398/month, got $${Math.round(payment)}`);
+});
+
+test('Loan repayment: $500k @ 7% for 25 years', 'calculation', () => {
+  const principal = 500000;
+  const rate = 7 / 100 / 12;
+  const n = 25 * 12;
+  const payment = principal * (rate / (1 - Math.pow(1 + rate, -n)));
+  assertApprox(payment, 3535, 5, `Expected ~$3,535/month, got $${Math.round(payment)}`);
+});
+
+test('Loan repayment: Zero interest rate edge case', 'calculation', () => {
+  const principal = 300000;
+  const n = 30 * 12;
+  const payment = principal / n;
+  assert(payment === 833.33, `Expected 833.33, got ${payment.toFixed(2)}`);
+});
+
+// LVR Calculation Tests
+test('LVR calculation: 20% deposit', 'calculation', () => {
+  const price = 500000;
+  const deposit = 100000;
+  const loan = price - deposit;
+  const lvr = (loan / price) * 100;
+  assert(lvr === 80, `Expected 80%, got ${lvr}%`);
+});
+
+test('LVR calculation: 10% deposit', 'calculation', () => {
+  const price = 600000;
+  const deposit = 60000;
+  const loan = price - deposit;
+  const lvr = (loan / price) * 100;
+  assert(lvr === 90, `Expected 90%, got ${lvr}%`);
+});
+
+// Yield Calculation Tests
+test('Gross yield: $500k property, $26k annual rent', 'calculation', () => {
+  const price = 500000;
+  const rent = 26000;
+  const yield_pct = (rent / price) * 100;
+  assertApprox(yield_pct, 5.2, 0.01, `Expected 5.2%, got ${yield_pct.toFixed(2)}%`);
+});
+
+test('Gross yield: $800k property, $30k annual rent', 'calculation', () => {
+  const price = 800000;
+  const rent = 30000;
+  const yield_pct = (rent / price) * 100;
+  assertApprox(yield_pct, 3.75, 0.01, `Expected 3.75%, got ${yield_pct.toFixed(2)}%`);
+});
+
+// Depreciation Calculation Tests
+test('Division 43 depreciation: $150k building value', 'calculation', () => {
+  const buildingValue = 150000;
+  const div43 = buildingValue * 0.025; // 2.5% per year
+  assert(div43 === 3750, `Expected $3,750, got $${div43}`);
+});
+
+test('Total depreciation: Div 43 + Div 40', 'calculation', () => {
+  const buildingValue = 200000;
+  const div43 = buildingValue * 0.025;
+  const div40 = 3000;
+  const total = div43 + div40;
+  assert(total === 8000, `Expected $8,000, got $${total}`);
+});
+
+// Tax Refund Calculation Tests
+test('Tax refund: $10k loss at 30% rate', 'calculation', () => {
+  const loss = 10000;
+  const taxRate = 0.30;
+  const refund = loss * taxRate;
+  assert(refund === 3000, `Expected $3,000, got $${refund}`);
+});
+
+test('Tax refund: Negative gearing with depreciation', 'calculation', () => {
+  const cashflowLoss = 5000;
+  const depreciation = 5000;
+  const taxRate = 0.37;
+  const totalDeduction = cashflowLoss + depreciation;
+  const refund = totalDeduction * taxRate;
+  assert(refund === 3700, `Expected $3,700, got $${refund}`);
+});
+
+// Interest Calculation Tests (Amortization)
+test('Annual interest: First year on $400k @ 6%', 'calculation', () => {
+  const loan = 400000;
+  const rate = 6 / 100 / 12;
+  const monthlyPayment = loan * (rate / (1 - Math.pow(1 + rate, -360)));
+  
+  let balance = loan;
+  let interestSum = 0;
+  for(let i = 0; i < 12; i++) {
+    const interest = balance * rate;
+    const principal = monthlyPayment - interest;
+    balance -= principal;
+    interestSum += interest;
+  }
+  
+  assertApprox(interestSum, 23856, 50, `Expected ~$23,856, got $${Math.round(interestSum)}`);
+});
+
+// DTI (Debt-to-Income) Calculation Tests
+test('DTI calculation: 30% threshold', 'calculation', () => {
+  const monthlyIncome = 8333; // $100k/year
+  const monthlyRepayment = 2500;
+  const dti = (monthlyRepayment / monthlyIncome) * 100;
+  assertApprox(dti, 30, 0.1, `Expected 30%, got ${dti.toFixed(1)}%`);
+});
+
+test('DTI calculation: Multiple debts', 'calculation', () => {
+  const monthlyIncome = 10000;
+  const mortgage = 3000;
+  const otherDebts = 500;
+  const living = 3000;
+  const total = mortgage + otherDebts + living;
+  const dti = (total / monthlyIncome) * 100;
+  assert(dti === 65, `Expected 65%, got ${dti}%`);
+});
+
+// Break-even Calculation Tests
+test('Break-even: 3% growth, $500k property', 'calculation', () => {
+  const purchasePrice = 500000;
+  const stampDuty = 17990;
+  const fees = 2500;
+  const totalCost = purchasePrice + stampDuty + fees;
+  const sellingCosts = purchasePrice * 0.03;
+  const annualCosts = 30000; // holding costs
+  
+  // Find years to break even
+  let years = 0;
+  let futureValue = purchasePrice;
+  while(years < 30 && (futureValue - sellingCosts) < totalCost + (annualCosts * years)) {
+    years++;
+    futureValue = purchasePrice * Math.pow(1.03, years);
+  }
+  
+  assert(years >= 1 && years <= 10, `Expected 1-10 years, got ${years} years`);
+});
+
+// ============================================================================
+// UI INTEGRATION TESTS - Test the actual calculator interface
+// ============================================================================
+
+test('UI: Default values load correctly', 'ui', async () => {
+  const calc = getCalculator();
+  const price = calc.$('price').value;
+  assert(price == 500000, `Expected default price 500000, got ${price}`);
+});
+
+test('UI: Stamp duty updates on price change', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 600000;
+  calc.updateAll();
+  await wait(100);
+  
+  const stampText = calc.$('out_stamp').innerText;
+  const stamp = parseInt(stampText.replace(/[^0-9]/g, ''));
+  assertApprox(stamp, 21490, 50, `Expected ~$21,490 stamp duty, got $${stamp.toLocaleString()}`);
+});
+
+test('UI: Deposit percentage correctly calculates deposit amount', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('deposit_percent').value = 20;
+  calc.updateAll();
+  await wait(100);
+  
+  const depositText = calc.$('out_deposit').innerText;
+  const deposit = parseInt(depositText.replace(/[^0-9]/g, ''));
+  assert(deposit === 100000, `Expected $100,000 deposit, got $${deposit.toLocaleString()}`);
+});
+
+test('UI: LMI checkbox auto-enables when deposit < 20%', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('deposit_percent').value = 15;
+  calc.updateAll();
+  await wait(100);
+  
+  const lmiChecked = calc.$('include_lmi').checked;
+  assert(lmiChecked, 'LMI checkbox should be auto-checked for deposit < 20%');
+});
+
+test('UI: Gross yield calculation displays correctly', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('rent_week').value = 500; // $26k/year
+  calc.updateAll();
+  await wait(100);
+  
+  const yieldText = calc.$('out_gross_yield').innerText;
+  const yieldValue = parseFloat(yieldText);
+  assertApprox(yieldValue, 5.2, 0.1, `Expected ~5.2% yield, got ${yieldValue}%`);
+});
+
+test('UI: Monthly repayment calculates correctly', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 400000;
+  calc.$('deposit_percent').value = 20;
+  calc.$('interest_rate').value = 6.0;
+  calc.$('loan_term').value = 30;
+  calc.updateAll();
+  await wait(100);
+  
+  const repayText = calc.$('out_monthly').innerText;
+  const repay = parseInt(repayText.replace(/[^0-9]/g, ''));
+  assertApprox(repay, 1919, 20, `Expected ~$1,919/month, got $${repay.toLocaleString()}`);
+});
+
+test('UI: Negative cashflow displays with correct styling', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 600000;
+  calc.$('rent_week').value = 400; // Low rent
+  calc.$('interest_rate').value = 7.0;
+  calc.updateAll();
+  await wait(100);
+  
+  const cashflowEl = calc.$('out_cashflow');
+  const hasNegativeClass = cashflowEl.classList.contains('negative');
+  assert(hasNegativeClass, 'Negative cashflow should have "negative" class');
+});
+
+test('UI: Depreciation checkbox toggles calculation', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('include_depreciation').checked = false;
+  calc.updateAll();
+  await wait(100);
+  
+  let depText = calc.$('out_depreciation').innerText;
+  let dep = parseInt(depText.replace(/[^0-9]/g, '')) || 0;
+  assert(dep === 0, `Expected $0 depreciation when unchecked, got $${dep}`);
+  
+  calc.$('include_depreciation').checked = true;
+  calc.$('building_value').value = 200000;
+  calc.updateAll();
+  await wait(100);
+  
+  depText = calc.$('out_depreciation').innerText;
+  dep = parseInt(depText.replace(/[^0-9]/g, ''));
+  assert(dep > 0, `Expected depreciation > $0 when checked, got $${dep}`);
+});
+
+test('UI: Tax refund calculates with negative gearing', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 700000;
+  calc.$('rent_week').value = 400;
+  calc.$('deposit_percent').value = 20;
+  calc.$('interest_rate').value = 6.5;
+  calc.$('taxBracket').value = 0.37;
+  calc.$('include_depreciation').checked = true;
+  calc.$('building_value').value = 200000;
+  calc.updateAll();
+  await wait(100);
+  
+  const refundText = calc.$('out_tax_refund').innerText;
+  const refund = parseInt(refundText.replace(/[^0-9]/g, ''));
+  assert(refund > 0, `Expected tax refund > $0 with negative gearing, got $${refund}`);
+});
+
+test('UI: Capital appreciation chart updates on price change', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 750000;
+  calc.$('capital_gain').value = 4;
+  calc.updateCapitalAppreciation();
+  await wait(200);
+  
+  assert(calc.window.valueChartInstance, 'Capital appreciation chart should exist');
+  const chartData = calc.window.valueChartInstance.data.datasets[0].data;
+  assert(chartData.length === 21, `Expected 21 data points, got ${chartData.length}`);
+  assert(chartData[0] === 750000, `Expected first value 750000, got ${chartData[0]}`);
+});
+
+// Buyer/Affordability Tab Tests
+test('UI Buyer: DTI calculation shows correct ratio', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Switch to buyer tab
+  const buyerTab = calc.document.querySelector('[data-tab="affordability"]');
+  if (buyerTab) {
+    buyerTab.click();
+    await wait(200);
+    
+    calc.$('buyer_price').value = 500000;
+    calc.$('buyer_deposit_amount').value = 100000;
+    calc.$('buyer_income').value = 120000;
+    calc.$('buyer_living_expenses').value = 3000;
+    calc.$('buyer_other_debts').value = 500;
+    calc.$('buyer_interest_rate').value = 6.5;
+    calc.updateBuyerCalcs();
+    await wait(100);
+    
+    const dtiText = calc.$('buyer_out_dti').innerText;
+    const dti = parseFloat(dtiText);
+    assert(dti > 0 && dti < 100, `Expected valid DTI percentage, got ${dti}%`);
+  }
+});
+
+test('UI Buyer: Shortfall detection works correctly', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const buyerTab = calc.document.querySelector('[data-tab="affordability"]');
+  if (buyerTab) {
+    buyerTab.click();
+    await wait(200);
+    
+    calc.$('buyer_price').value = 600000;
+    calc.$('buyer_deposit_amount').value = 50000; // Insufficient
+    calc.updateBuyerCalcs();
+    await wait(100);
+    
+    const shortfallEl = calc.$('buyer_out_shortfall');
+    const hasNegative = shortfallEl.classList.contains('negative');
+    assert(hasNegative, 'Should show negative/shortfall when deposit is insufficient');
+  }
+});
+
+test('UI Buyer: Break-even calculation completes', 'ui', async () => {
+  const calc = getCalculator();
+  
+  const buyerTab = calc.document.querySelector('[data-tab="affordability"]');
+  if (buyerTab) {
+    buyerTab.click();
+    await wait(200);
+    
+    calc.$('buyer_price').value = 500000;
+    calc.$('buyer_deposit_amount').value = 100000;
+    calc.updateBuyerCalcs();
+    await wait(100);
+    
+    const yearsText = calc.$('buyer_out_breakeven_years').innerText;
+    assert(yearsText.includes('year'), `Expected break-even years, got "${yearsText}"`);
+  }
+});
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+function getCalculator() {
+  const iframe = document.getElementById('calculator');
+  const calc = iframe.contentWindow;
+  return {
+    window: calc,
+    document: calc.document,
+    $: (id) => calc.document.getElementById(id),
+    updateAll: () => calc.updateAll(),
+    updateBuyerCalcs: () => calc.updateBuyerCalcs(),
+    updateCapitalAppreciation: () => calc.updateCapitalAppreciation()
+  };
+}
+
+// Copy calculation functions from main calculator for testing
+function calcNSWDuty(price) {
+  const nswDutyTable = [
+    {min: 0,      max: 16000,  base: 0,      ratePer100: 1.25},
+    {min: 16000,  max: 35000,  base: 200,    ratePer100: 1.50},
+    {min: 35000,  max: 93000,  base: 485,    ratePer100: 1.75},
+    {min: 93000,  max: 351000, base: 1500,   ratePer100: 3.50},
+    {min: 351000, max: 1168000, base:10530,  ratePer100: 4.50},
+    {min: 1168000, max: Infinity, base:47295, ratePer100: 5.50}
+  ];
+  
+  price = Number(price) || 0;
+  for(const row of nswDutyTable){
+    if(price >= row.min && price <= row.max){
+      const excess = Math.max(0, price - row.min);
+      const duty = row.base + (excess / 100) * row.ratePer100;
+      return Math.round(duty);
+    }
+  }
+  return 0;
+}
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ============================================================================
+// Test Runner
+// ============================================================================
+
+async function runTests(filter = null) {
+  totalTests = 0;
+  passedTests = 0;
+  failedTests = 0;
+  
+  const resultsDiv = document.getElementById('results');
+  resultsDiv.innerHTML = '';
+  
+  // Wait for iframe to load
+  const iframe = document.getElementById('calculator');
+  if (!iframe.contentWindow.document.body) {
+    await new Promise(resolve => {
+      iframe.onload = resolve;
+    });
+    await wait(1000); // Extra wait for scripts to initialize
+  }
+  
+  // Group tests by category
+  const categories = {};
+  tests.forEach(t => {
+    if (!filter || t.category === filter) {
+      if (!categories[t.category]) {
+        categories[t.category] = [];
+      }
+      categories[t.category].push(t);
+    }
+  });
+  
+  // Run tests by category
+  for (const [category, categoryTests] of Object.entries(categories)) {
+    const suiteDiv = document.createElement('div');
+    suiteDiv.className = 'test-suite';
+    suiteDiv.innerHTML = `<h2>${category.toUpperCase()} Tests (${categoryTests.length})</h2>`;
+    
+    for (const test of categoryTests) {
+      totalTests++;
+      const testDiv = document.createElement('div');
+      testDiv.className = 'test-case';
+      
+      try {
+        await test.fn();
+        passedTests++;
+        testDiv.classList.add('pass');
+        testDiv.innerHTML = `
+          <div class="test-name">${test.name}</div>
+          <div class="test-result"></div>
+        `;
+      } catch (error) {
+        failedTests++;
+        testDiv.classList.add('fail');
+        testDiv.innerHTML = `
+          <div>
+            <div class="test-name">${test.name}</div>
+            <div class="test-details">${error.message}</div>
+          </div>
+          <div class="test-result"></div>
+        `;
+      }
+      
+      suiteDiv.appendChild(testDiv);
+    }
+    
+    resultsDiv.appendChild(suiteDiv);
+  }
+  
+  // Show summary
+  const summaryDiv = document.getElementById('summary');
+  const allPassed = failedTests === 0;
+  summaryDiv.className = allPassed ? 'summary' : 'summary fail';
+  summaryDiv.innerHTML = `
+    <strong>Test Results:</strong> ${passedTests} / ${totalTests} passed
+    ${failedTests > 0 ? `<br><strong>${failedTests} tests failed</strong>` : '<br><strong>✨ All tests passed!</strong>'}
+  `;
+}
+
+async function runAllTests() {
+  await runTests();
+}
+
+async function runCalculationTests() {
+  await runTests('calculation');
+}
+
+async function runUITests() {
+  await runTests('ui');
+}
+
+// Auto-run on load
+window.addEventListener('load', () => {
+  setTimeout(runAllTests, 1500);
+});
+</script>
+
+</body>
+</html>

@@ -45,6 +45,38 @@
   header h1{margin:0;font-size:22px;font-weight:700;color:#0b3b4b} 
   header p{margin:4px 0 0 0;color:var(--muted);font-size:14px}
   
+  /* Tabs */
+  .tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:2px solid var(--border);padding:0}
+  .tab{
+    padding:14px 28px;
+    background:transparent;
+    border:none;
+    border-bottom:3px solid transparent;
+    cursor:pointer;
+    font-weight:600;
+    font-size:15px;
+    color:var(--muted);
+    transition:all 0.2s;
+    margin-bottom:-2px;
+  }
+  .tab:hover{color:var(--accent);background:rgba(28,126,214,0.05)}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(28,126,214,0.08)}
+  .tab-content{display:none}
+  .tab-content.active{display:block}
+  
+  /* Alert boxes */
+  .alert{
+    padding:14px 16px;
+    border-radius:8px;
+    margin:16px 0;
+    border-left:4px solid;
+    font-size:14px;
+  }
+  .alert.success{background:#d1fae5;border-color:var(--success);color:#065f46}
+  .alert.warning{background:#fef3c7;border-color:var(--warning);color:#92400e}
+  .alert.danger{background:#fee2e2;border-color:var(--danger);color:#991b1b}
+  .alert strong{display:block;margin-bottom:6px;font-size:15px}
+  
   /* Layout */
   .grid{display:grid;grid-template-columns:1fr 480px;gap:24px;align-items:start}
   .card{background:var(--card);border-radius:14px;padding:24px;box-shadow:var(--shadow);border:1px solid var(--border)}
@@ -231,6 +263,14 @@
       </div>
     </header>
 
+    <!-- Tabs Navigation -->
+    <div class="tabs">
+      <button class="tab active" data-tab="investment">📊 Investment Analysis</button>
+      <button class="tab" data-tab="affordability">🏦 Affordability & Serviceability</button>
+    </div>
+
+    <!-- Tab 1: Investment Analysis (existing calculator) -->
+    <div class="tab-content active" id="tab-investment">
     <div class="grid">
       <!-- LEFT: Inputs -->
       <div class="card">
@@ -467,6 +507,167 @@
         </div>
       </div>
     </div>
+    </div>
+    <!-- End Investment Analysis Tab -->
+
+    <!-- Tab 2: Affordability & Serviceability -->
+    <div class="tab-content" id="tab-affordability">
+    <div class="grid">
+      <!-- LEFT: Buyer Inputs -->
+      <div class="card">
+        <h3 style="margin:0 0 16px 0;font-size:18px;color:#0b3b4b">Can You Afford This Property?</h3>
+
+        <!-- Property Basics -->
+        <div class="section-header" data-section="buyer-property">
+          <h3>🏠 Property Details</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-buyer-property">
+          <div class="row">
+            <div class="col">
+              <label class="required">Purchase price (AUD)</label>
+              <input id="buyer_price" type="number" value="500000" step="1000" placeholder="500,000" />
+            </div>
+            <div class="col">
+              <label class="required">Deposit saved (AUD)</label>
+              <input id="buyer_deposit_amount" type="number" value="100000" step="1000" placeholder="100,000" />
+              <div class="small">Cash available now</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Your Income & Expenses -->
+        <div class="section-header" data-section="buyer-income">
+          <h3>💰 Your Finances</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-buyer-income">
+          <div class="row">
+            <div class="col">
+              <label class="required">Annual gross income (before tax)</label>
+              <input id="buyer_income" type="number" value="100000" step="1000" placeholder="100,000" />
+              <div class="small">Combined household income</div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col">
+              <label>Monthly living expenses</label>
+              <input id="buyer_living_expenses" type="number" value="3000" placeholder="3,000" />
+              <div class="small">Rent, groceries, utilities, transport, etc.</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>Other monthly debt repayments</label>
+              <input id="buyer_other_debts" type="number" value="0" placeholder="0" />
+              <div class="small">Credit cards, car loans, personal loans, HECS</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Loan Details -->
+        <div class="section-header" data-section="buyer-loan">
+          <h3>🏦 Loan Terms</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-buyer-loan">
+          <div class="row">
+            <div class="col">
+              <label class="required">Interest rate (%)</label>
+              <input id="buyer_interest_rate" type="number" step="0.1" value="6.5" placeholder="6.5" />
+              <div class="small">Current typical rate: 6.0% - 7.5%</div>
+            </div>
+            <div class="col">
+              <label class="required">Loan term (years)</label>
+              <input id="buyer_loan_term" type="number" value="30" min="1" max="50" placeholder="30" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col">
+              <label>Stress test rate (%)</label>
+              <input id="buyer_stress_rate" type="number" step="0.1" value="9.0" placeholder="9.0" />
+              <div class="small">Banks assess at higher rate (typically 3% buffer)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Owner Occupied Costs -->
+        <div class="section-header" data-section="buyer-costs">
+          <h3>🏡 Ongoing Costs (if living in property)</h3>
+          <span class="toggle">▼</span>
+        </div>
+        <div class="section-content" id="section-buyer-costs">
+          <div class="row">
+            <div class="col">
+              <label>Strata fees (per quarter)</label>
+              <input id="buyer_strata" type="number" value="1000" placeholder="1,000" />
+            </div>
+            <div class="col">
+              <label>Annual maintenance budget</label>
+              <input id="buyer_maintenance" type="number" value="2000" placeholder="2,000" />
+            </div>
+          </div>
+          <div class="small">Council rates (~$2,200/yr) and insurance (~$1,200/yr) included automatically</div>
+        </div>
+
+        <div class="controls">
+          <button class="btn" id="buyerCalcBtn">🔄 Calculate Affordability</button>
+          <button class="btn secondary" id="buyerResetBtn">↺ Reset</button>
+        </div>
+
+        <footer class="small warning">
+          <strong>⚠️ Disclaimer:</strong> This is an estimate only. Actual borrowing capacity depends on your lender's assessment. Consult with a mortgage broker or bank for accurate pre-approval.
+        </footer>
+      </div>
+
+      <!-- RIGHT: Affordability Results -->
+      <div class="card results-sticky">
+        <h3 style="margin:0 0 20px 0;font-size:18px;color:#0b3b4b;border-bottom:2px solid var(--border);padding-bottom:12px">🎯 Affordability Assessment</h3>
+        
+        <!-- Serviceability Check -->
+        <div id="serviceability_alert"></div>
+
+        <h4 style="font-size:14px;color:var(--muted);margin:16px 0 8px 0;text-transform:uppercase;letter-spacing:0.5px">💵 Upfront Requirements</h4>
+        <div class="results">
+          <div class="line"><div>Deposit required (20%)</div><div id="buyer_out_deposit_req">$0</div></div>
+          <div class="line"><div>Your deposit saved</div><div class="kpi" id="buyer_out_deposit_saved">$0</div></div>
+          <div class="line"><div>Stamp duty (NSW)</div><div id="buyer_out_stamp">$0</div></div>
+          <div class="line"><div>Purchase fees (est)</div><div id="buyer_out_fees">$0</div></div>
+          <div class="line highlight"><div><strong>💰 Total cash needed</strong></div><div class="kpi" id="buyer_out_total_needed">$0</div></div>
+          <div class="line"><div><strong>Shortfall / Surplus</strong></div><div class="kpi" id="buyer_out_shortfall">$0</div></div>
+        </div>
+
+        <h4 style="font-size:14px;color:var(--muted);margin:20px 0 8px 0;text-transform:uppercase;letter-spacing:0.5px">🏦 Loan Assessment</h4>
+        <div class="results">
+          <div class="line"><div>Loan amount required</div><div id="buyer_out_loan">$0</div></div>
+          <div class="line"><div>LVR (Loan-to-Value Ratio)</div><div id="buyer_out_lvr">0%</div></div>
+          <div class="line"><div>Monthly repayment (P&I)</div><div class="kpi" id="buyer_out_monthly">$0</div></div>
+          <div class="line"><div>Stress test repayment</div><div class="kpi" id="buyer_out_stress_monthly">$0</div></div>
+        </div>
+
+        <h4 style="font-size:14px;color:var(--muted);margin:20px 0 8px 0;text-transform:uppercase;letter-spacing:0.5px">📊 Debt Serviceability</h4>
+        <div class="results">
+          <div class="line"><div>Monthly gross income</div><div class="kpi positive" id="buyer_out_monthly_income">$0</div></div>
+          <div class="line"><div>Total monthly commitments</div><div class="kpi negative" id="buyer_out_total_commitments">$0</div></div>
+          <div class="line highlight"><div><strong>Debt-to-Income Ratio</strong></div><div class="kpi" id="buyer_out_dti">0%</div></div>
+          <div class="line"><div>Surplus / Deficit</div><div class="kpi" id="buyer_out_surplus">$0</div></div>
+        </div>
+
+        <div style="margin-top:20px;padding:16px;background:var(--panel);border-radius:10px;border:1px solid var(--border)">
+          <h4 style="font-size:14px;color:#0b3b4b;margin:0 0 12px 0">💡 Break-Even Analysis</h4>
+          <div class="results">
+            <div class="line"><div>Annual property costs</div><div id="buyer_out_annual_costs">$0</div></div>
+            <div class="line"><div>Years to break-even (3% growth)</div><div id="buyer_out_breakeven_years">-</div></div>
+            <div class="line"><div>Break-even sale price</div><div id="buyer_out_breakeven_price">$0</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <!-- End Affordability Tab -->
 
   </div>
 
@@ -717,6 +918,134 @@ function updateAll(){
   drawChart(chartWithTax);
 }
 
+/* Buyer/Affordability Tab Calculations */
+function updateBuyerCalcs(){
+  const price = Number($('buyer_price').value) || 0;
+  const depositSaved = Number($('buyer_deposit_amount').value) || 0;
+  const income = Number($('buyer_income').value) || 0;
+  const livingExpenses = Number($('buyer_living_expenses').value) || 0;
+  const otherDebts = Number($('buyer_other_debts').value) || 0;
+  const interestRate = Number($('buyer_interest_rate').value) || 6.5;
+  const stressRate = Number($('buyer_stress_rate').value) || 9.0;
+  const loanTerm = Number($('buyer_loan_term').value) || 30;
+  const strata = Number($('buyer_strata').value) || 0;
+  const maintenance = Number($('buyer_maintenance').value) || 0;
+
+  // Upfront calculations
+  const depositReq = Math.round(price * 0.20);
+  const stamp = calcNSWDuty(price);
+  const fees = 2500; // conveyancing + inspections
+  const totalNeeded = depositReq + stamp + fees;
+  const shortfall = depositSaved - totalNeeded;
+
+  $('buyer_out_deposit_req').innerText = '$' + fmt(depositReq);
+  $('buyer_out_deposit_saved').innerText = '$' + fmt(depositSaved);
+  $('buyer_out_stamp').innerText = '$' + fmt(stamp);
+  $('buyer_out_fees').innerText = '$' + fmt(fees);
+  $('buyer_out_total_needed').innerText = '$' + fmt(totalNeeded);
+  
+  const shortfallEl = $('buyer_out_shortfall');
+  shortfallEl.classList.remove('positive', 'negative');
+  if(shortfall >= 0) {
+    shortfallEl.classList.add('positive');
+    shortfallEl.innerText = '+$' + fmt(shortfall) + ' surplus';
+  } else {
+    shortfallEl.classList.add('negative');
+    shortfallEl.innerText = '-$' + fmt(Math.abs(shortfall)) + ' shortfall';
+  }
+
+  // Loan calculations
+  const loanAmount = Math.max(0, price - depositSaved);
+  const lvr = price > 0 ? (loanAmount / price) * 100 : 0;
+  
+  $('buyer_out_loan').innerText = '$' + fmt(loanAmount);
+  $('buyer_out_lvr').innerText = lvr.toFixed(1) + '%';
+
+  // Monthly repayment at normal rate
+  const monthlyRate = interestRate / 100 / 12;
+  const n = loanTerm * 12;
+  let monthlyRepay = 0;
+  if(monthlyRate === 0) monthlyRepay = loanAmount / n;
+  else monthlyRepay = loanAmount * (monthlyRate / (1 - Math.pow(1 + monthlyRate, -n)));
+  
+  $('buyer_out_monthly').innerText = '$' + fmt(Math.round(monthlyRepay));
+
+  // Stress test repayment
+  const stressMonthlyRate = stressRate / 100 / 12;
+  let stressRepay = 0;
+  if(stressMonthlyRate === 0) stressRepay = loanAmount / n;
+  else stressRepay = loanAmount * (stressMonthlyRate / (1 - Math.pow(1 + stressMonthlyRate, -n)));
+  
+  $('buyer_out_stress_monthly').innerText = '$' + fmt(Math.round(stressRepay));
+
+  // Serviceability
+  const monthlyIncome = income / 12;
+  const strataMonthly = (strata * 4) / 12;
+  const councilInsurance = (2200 + 1200) / 12; // annual to monthly
+  const maintenanceMonthly = maintenance / 12;
+  const totalMonthlyCommitments = monthlyRepay + livingExpenses + otherDebts + strataMonthly + councilInsurance + maintenanceMonthly;
+  const dti = monthlyIncome > 0 ? (totalMonthlyCommitments / monthlyIncome) * 100 : 0;
+  const surplus = monthlyIncome - totalMonthlyCommitments;
+
+  $('buyer_out_monthly_income').innerText = '$' + fmt(Math.round(monthlyIncome));
+  $('buyer_out_total_commitments').innerText = '$' + fmt(Math.round(totalMonthlyCommitments));
+  
+  const dtiEl = $('buyer_out_dti');
+  dtiEl.classList.remove('positive', 'negative', 'warning');
+  dtiEl.innerText = dti.toFixed(1) + '%';
+  
+  const surplusEl = $('buyer_out_surplus');
+  surplusEl.classList.remove('positive', 'negative');
+  if(surplus >= 0) {
+    surplusEl.classList.add('positive');
+    surplusEl.innerText = '+$' + fmt(Math.round(surplus));
+  } else {
+    surplusEl.classList.add('negative');
+    surplusEl.innerText = '-$' + fmt(Math.round(Math.abs(surplus)));
+  }
+
+  // Serviceability Alert
+  let alertHTML = '';
+  if(shortfall < 0) {
+    alertHTML += '<div class="alert danger"><strong>❌ Insufficient Deposit</strong>You need $' + fmt(Math.abs(shortfall)) + ' more in savings to proceed with this purchase.</div>';
+  } else if(shortfall < 10000) {
+    alertHTML += '<div class="alert warning"><strong>⚠️ Low Buffer</strong>You have enough for the deposit but little emergency fund. Consider saving more.</div>';
+  }
+
+  if(lvr > 80) {
+    alertHTML += '<div class="alert warning"><strong>⚠️ LMI Required</strong>Your deposit is less than 20%. You\'ll need to pay Lenders Mortgage Insurance (est. $' + fmt(Math.round(loanAmount * 0.02)) + ').</div>';
+  }
+
+  if(dti > 40) {
+    alertHTML += '<div class="alert danger"><strong>❌ High Debt-to-Income</strong>Your DTI is ' + dti.toFixed(1) + '%. Banks typically limit to 30-35%. You may not qualify for this loan.</div>';
+  } else if(dti > 30) {
+    alertHTML += '<div class="alert warning"><strong>⚠️ Tight Budget</strong>Your DTI is ' + dti.toFixed(1) + '%. You may qualify, but budget will be very tight. Consider a lower price or higher income.</div>';
+  } else if(dti > 0) {
+    alertHTML += '<div class="alert success"><strong>✅ Good Serviceability</strong>Your DTI is ' + dti.toFixed(1) + '%. You should comfortably qualify for this loan amount.</div>';
+  }
+
+  $('serviceability_alert').innerHTML = alertHTML;
+
+  // Break-even analysis based on total purchase price (including all costs)
+  const totalPurchaseCost = price + stamp + fees;
+  const annualCosts = (strata * 4) + 2200 + 1200 + maintenance + (monthlyRepay * 12);
+  $('buyer_out_annual_costs').innerText = '$' + fmt(Math.round(annualCosts));
+  
+  // Calculate years to break even with 3% annual appreciation
+  const appreciationRate = 0.03;
+  let years = 0;
+  let futureValue = price;
+  const sellingCosts = price * 0.03; // 3% agent fees + marketing
+  
+  while(years < 30 && (futureValue - sellingCosts) < totalPurchaseCost + (annualCosts * years)) {
+    years++;
+    futureValue = price * Math.pow(1 + appreciationRate, years);
+  }
+  
+  $('buyer_out_breakeven_years').innerText = years + ' years';
+  $('buyer_out_breakeven_price').innerText = '$' + fmt(Math.round(futureValue));
+}
+
 /* Chart drawing */
 function drawChart(data){
   const ctx = document.getElementById('cashflowChart').getContext('2d');
@@ -847,6 +1176,53 @@ document.querySelectorAll('input, select').forEach(el => {
 window.addEventListener('load', ()=>{ 
   updateAll();
   updateCapitalAppreciation(); // Initialize capital appreciation chart
+  
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.dataset.tab;
+      
+      // Update tab buttons
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      document.getElementById('tab-' + targetTab).classList.add('active');
+      
+      // Calculate when switching to affordability tab
+      if(targetTab === 'affordability') {
+        updateBuyerCalcs();
+      }
+    });
+  });
+  
+  // Buyer tab event listeners
+  $('buyerCalcBtn').addEventListener('click', updateBuyerCalcs);
+  $('buyerResetBtn').addEventListener('click', ()=>{
+    $('buyer_price').value = 500000;
+    $('buyer_deposit_amount').value = 100000;
+    $('buyer_income').value = 100000;
+    $('buyer_living_expenses').value = 3000;
+    $('buyer_other_debts').value = 0;
+    $('buyer_interest_rate').value = 6.5;
+    $('buyer_stress_rate').value = 9.0;
+    $('buyer_loan_term').value = 30;
+    $('buyer_strata').value = 1000;
+    $('buyer_maintenance').value = 2000;
+    updateBuyerCalcs();
+  });
+  
+  // Auto-update buyer calcs on input
+  const buyerInputs = ['buyer_price', 'buyer_deposit_amount', 'buyer_income', 'buyer_living_expenses', 
+                       'buyer_other_debts', 'buyer_interest_rate', 'buyer_stress_rate', 'buyer_loan_term',
+                       'buyer_strata', 'buyer_maintenance'];
+  buyerInputs.forEach(id => {
+    if($(id)) {
+      $(id).addEventListener('input', updateBuyerCalcs);
+      $(id).addEventListener('change', updateBuyerCalcs);
+    }
+  });
   
   // Initialize collapsible sections
   document.querySelectorAll('.section-header').forEach(header => {
