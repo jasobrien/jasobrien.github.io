@@ -743,19 +743,10 @@ function updateCapitalAppreciation(){
 
 /* Main calculation */
 function updateAll(){
-      // Depreciation checkbox logic
-      const depreciationCheckbox = document.getElementById('include_depreciation');
-      const includeDepreciation = depreciationCheckbox ? depreciationCheckbox.checked : false;
-      // ...existing code...
-    // Calculate minimum weekly rent for cashflow positive
-    const analysis_loan_amount = Number(document.getElementById('out_loan').innerText.replace(/[^\d.]/g, '')) || 0;
-    const analysis_interest_rate = Number(document.getElementById('interest_rate').value) / 100;
-    const analysis_op_costs = Number(document.getElementById('out_opcosts').innerText.replace(/[^\d.]/g, '')) || 0;
-    const analysis_annual_interest = analysis_loan_amount * analysis_interest_rate;
-    const analysis_total_annual_expenses = analysis_op_costs + analysis_annual_interest;
-    const analysis_min_weekly_rent = Math.ceil(analysis_total_annual_expenses / 52);
-    document.getElementById('analysis_text').innerText =
-      `To be cashflow positive (cover all expenses), minimum weekly rent required is $${analysis_min_weekly_rent.toLocaleString()}.`;
+  // Get depreciation checkbox logic
+  const depreciationCheckbox = document.getElementById('include_depreciation');
+  const includeDepreciation = depreciationCheckbox ? depreciationCheckbox.checked : false;
+  
   // Automatically tick LMI if deposit < 20%
   const deposit_pct_val = Number(document.getElementById('deposit_percent').value) || 20;
   const lmiCheckbox = document.getElementById('include_lmi');
@@ -916,6 +907,13 @@ function updateAll(){
     values: [rentAnnual, strataAnnual, pm_fee, maintenance, annualInterest, taxRefund]
   };
   drawChart(chartWithTax);
+  
+  // Calculate minimum weekly rent for cashflow positive (ANALYSIS)
+  const analysis_annual_interest = annualInterest;
+  const analysis_total_annual_expenses = opCosts + analysis_annual_interest;
+  const analysis_min_weekly_rent = Math.ceil(analysis_total_annual_expenses / 52);
+  document.getElementById('analysis_text').innerText =
+    `To be cashflow positive (cover all expenses), minimum weekly rent required is $${analysis_min_weekly_rent.toLocaleString()}.`;
 }
 
 /* Buyer/Affordability Tab Calculations */

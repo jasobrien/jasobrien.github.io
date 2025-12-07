@@ -273,10 +273,215 @@ test('Break-even: 3% growth, $500k property', 'calculation', () => {
 // UI INTEGRATION TESTS - Test the actual calculator interface
 // ============================================================================
 
+test('UI: Calculator loads without JavaScript errors', 'ui', async () => {
+  const calc = getCalculator();
+  assert(calc.window, 'Calculator window should exist');
+  assert(calc.$('price'), 'Price input should exist');
+  assert(typeof calc.updateAll === 'function', 'updateAll function should exist');
+  
+  // Try to run updateAll and catch any errors
+  try {
+    calc.updateAll();
+    await wait(100);
+    assert(true, 'updateAll executed without errors');
+  } catch(e) {
+    throw new Error(`updateAll threw error: ${e.message}`);
+  }
+});
+
+test('UI: All critical functions are defined', 'ui', async () => {
+  const calc = getCalculator();
+  assert(typeof calc.updateAll === 'function', 'updateAll should be a function');
+  assert(typeof calc.updateBuyerCalcs === 'function', 'updateBuyerCalcs should be a function');
+  assert(typeof calc.updateCapitalAppreciation === 'function', 'updateCapitalAppreciation should be a function');
+  assert(typeof calc.window.calcNSWDuty === 'function', 'calcNSWDuty should be a function');
+  assert(typeof calc.window.drawChart === 'function', 'drawChart should be a function');
+});
+
+test('UI: Output elements exist and are populated', 'ui', async () => {
+  const calc = getCalculator();
+  calc.updateAll();
+  await wait(200);
+  
+  const criticalOutputs = [
+    'out_deposit', 'out_stamp', 'out_fees', 'out_upfront', 'out_loan',
+    'out_monthly', 'out_rent_annual', 'out_opcosts', 'out_cashflow',
+    'out_gross_yield', 'out_net_yield', 'out_depreciation', 'out_tax_refund'
+  ];
+  
+  for(const id of criticalOutputs) {
+    const el = calc.$(id);
+    assert(el, `Output element '${id}' should exist`);
+    const text = el.innerText;
+    assert(text && text.length > 0, `Output '${id}' should have content, got: "${text}"`);
+    assert(!text.includes('NaN'), `Output '${id}' should not contain NaN, got: "${text}"`);
+    assert(!text.includes('undefined'), `Output '${id}' should not contain undefined, got: "${text}"`);
+  }
+});
+
+test('UI: Analysis text is populated correctly', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('rent_week').value = 500;
+  calc.updateAll();
+  await wait(200);
+  
+  const analysisText = calc.$('analysis_text').innerText;
+  assert(analysisText.length > 0, 'Analysis text should not be empty');
+  assert(analysisText.includes('$'), 'Analysis text should contain dollar amounts');
+  assert(!analysisText.includes('NaN'), `Analysis should not contain NaN, got: "${analysisText}"`);
+  assert(!analysisText.includes('undefined'), `Analysis should not contain undefined, got: "${analysisText}"`);
+});
+
+test('UI: Multiple consecutive updates work correctly', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // First update
+  calc.$('price').value = 400000;
+  calc.updateAll();
+  await wait(100);
+  
+  let stamp1 = calc.$('out_stamp').innerText;
+  assert(!stamp1.includes('NaN'), `First update stamp duty invalid: "${stamp1}"`);
+  
+  // Second update with different value
+  calc.$('price').value = 600000;
+  calc.updateAll();
+  await wait(100);
+  
+  let stamp2 = calc.$('out_stamp').innerText;
+  assert(!stamp2.includes('NaN'), `Second update stamp duty invalid: "${stamp2}"`);
+  assert(stamp1 !== stamp2, 'Stamp duty should change when price changes');
+});
+
+test('UI: Console errors are detected during calculations', 'ui', async () => {
+  const calc = getCalculator();
+  const originalConsoleError = calc.window.console.error;
+  let errorCaught = false;
+  let errorMessage = '';
+  
+  // Override console.error to catch any errors
+  calc.window.console.error = function(...args) {
+    errorCaught = true;
+    errorMessage = args.join(' ');
+    originalConsoleError.apply(calc.window.console, args);
+  };
+  
+  try {
+    calc.$('price').value = 500000;
+    calc.updateAll();
+    await wait(200);
+    
+    assert(!errorCaught, `Console error detected: ${errorMessage}`);
+  } finally {
+    calc.window.console.error = originalConsoleError;
+  }
+});
+
+test('UI: No undefined values in any output', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.$('rent_week').value = 500;
+  calc.$('deposit_percent').value = 20;
+  calc.$('interest_rate').value = 6.5;
+  calc.updateAll();
+  await wait(200);
+  
+  // Get all output elements
+  const outputs = calc.document.querySelectorAll('[id^="out_"]');
+  const failures = [];
+  
+  outputs.forEach(el => {
+    const text = el.innerText;
+    if (text.includes('undefined') || text.includes('NaN') || text === '') {
+      failures.push(`${el.id}: "${text}"`);
+    }
+  });
+  
+  assert(failures.length === 0, `Found invalid outputs: ${failures.join(', ')}`);
+});
+
+test('UI: Chart renders after calculation', 'ui', async () => {
+  const calc = getCalculator();
+  calc.$('price').value = 500000;
+  calc.updateAll();
+  await wait(300);
+  
+  assert(calc.window.chartInstance, 'Chart instance should exist after updateAll');
+  assert(calc.window.chartInstance.data, 'Chart should have data');
+  assert(calc.window.chartInstance.data.datasets.length > 0, 'Chart should have datasets');
+});
+
+test('UI: REGRESSION - Analysis calculation uses computed values not DOM reads', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // This test specifically checks for the bug where analysis tried to read
+  // out_loan and out_opcosts before they were calculated
+  calc.$('price').value = 550000;
+  calc.$('rent_week').value = 520;
+  calc.$('deposit_percent').value = 25;
+  
+  // Clear the outputs first to simulate a fresh calculation
+  calc.$('out_loan').innerText = '';
+  calc.$('out_opcosts').innerText = '';
+  
+  // Run calculation
+  calc.updateAll();
+  await wait(200);
+  
+  // Analysis should still work even if DOM was empty before calculation
+  const analysisText = calc.$('analysis_text').innerText;
+  assert(analysisText.length > 0, 'Analysis should be populated');
+  assert(analysisText.includes('$'), 'Analysis should contain dollar amount');
+  assert(!analysisText.includes('$0'), 'Analysis should not show $0 (indicates failed to read values)');
+  assert(!analysisText.includes('NaN'), 'Analysis should not contain NaN');
+  
+  // Verify the outputs are actually populated
+  const loanText = calc.$('out_loan').innerText;
+  const opCostsText = calc.$('out_opcosts').innerText;
+  assert(loanText && loanText !== '', 'Loan amount should be populated');
+  assert(opCostsText && opCostsText !== '', 'Operating costs should be populated');
+});
+
+test('UI: Fresh page load calculates everything correctly', 'ui', async () => {
+  // This simulates what happens when a user first loads the page
+  const calc = getCalculator();
+  
+  // Don't touch any inputs - use defaults
+  // The window.onload should have triggered updateAll()
+  await wait(500);
+  
+  // Check that all key outputs are populated
+  const criticalOutputs = ['out_deposit', 'out_stamp', 'out_loan', 'out_monthly', 'out_cashflow'];
+  
+  for(const id of criticalOutputs) {
+    const text = calc.$(id).innerText;
+    assert(text && text !== '$0' && text !== '', `${id} should be calculated on load, got: "${text}"`);
+    assert(!text.includes('NaN'), `${id} should not contain NaN on load`);
+  }
+  
+  // Analysis should also be populated
+  const analysisText = calc.$('analysis_text').innerText;
+  assert(analysisText.length > 10, 'Analysis should be populated on load');
+});
+
 test('UI: Default values load correctly', 'ui', async () => {
   const calc = getCalculator();
+  
+  // First ensure updateAll runs without error
+  try {
+    calc.updateAll();
+    await wait(200);
+  } catch(e) {
+    throw new Error(`updateAll failed: ${e.message}`);
+  }
+  
   const price = calc.$('price').value;
   assert(price == 500000, `Expected default price 500000, got ${price}`);
+  
+  // Verify outputs were actually calculated
+  const depositText = calc.$('out_deposit').innerText;
+  assert(depositText && !depositText.includes('NaN'), `Deposit should be valid, got: "${depositText}"`);
 });
 
 test('UI: Stamp duty updates on price change', 'ui', async () => {
@@ -516,7 +721,7 @@ async function runTests(filter = null) {
   failedTests = 0;
   
   const resultsDiv = document.getElementById('results');
-  resultsDiv.innerHTML = '';
+  resultsDiv.innerHTML = '<div style="padding:20px;text-align:center;color:#666;">Loading calculator and running tests...</div>';
   
   // Wait for iframe to load
   const iframe = document.getElementById('calculator');
@@ -526,6 +731,37 @@ async function runTests(filter = null) {
     });
     await wait(1000); // Extra wait for scripts to initialize
   }
+  
+  // Check for any console errors during load
+  const calc = iframe.contentWindow;
+  const loadErrors = [];
+  const originalError = calc.console.error;
+  calc.console.error = function(...args) {
+    loadErrors.push(args.join(' '));
+    originalError.apply(calc.console, args);
+  };
+  
+  // Verify calculator loaded properly
+  try {
+    if (!calc.updateAll || typeof calc.updateAll !== 'function') {
+      resultsDiv.innerHTML = '<div class="alert danger"><strong>❌ CRITICAL ERROR</strong><br>Calculator failed to load properly. updateAll function is missing or invalid.</div>';
+      return;
+    }
+    
+    // Try running updateAll to check for immediate errors
+    calc.updateAll();
+    await wait(300);
+    
+    if (loadErrors.length > 0) {
+      resultsDiv.innerHTML = `<div class="alert danger"><strong>❌ CALCULATOR ERRORS DETECTED</strong><br>${loadErrors.join('<br>')}</div>`;
+      return;
+    }
+  } catch(e) {
+    resultsDiv.innerHTML = `<div class="alert danger"><strong>❌ CALCULATOR INITIALIZATION FAILED</strong><br>${e.message}<br><br>Stack: ${e.stack}</div>`;
+    return;
+  }
+  
+  resultsDiv.innerHTML = '';
   
   // Group tests by category
   const categories = {};
@@ -563,7 +799,7 @@ async function runTests(filter = null) {
         testDiv.innerHTML = `
           <div>
             <div class="test-name">${test.name}</div>
-            <div class="test-details">${error.message}</div>
+            <div class="test-details">${error.message}${error.stack ? '<br><small>' + error.stack.split('\\n').slice(0,3).join('<br>') + '</small>' : ''}</div>
           </div>
           <div class="test-result"></div>
         `;
@@ -581,7 +817,7 @@ async function runTests(filter = null) {
   summaryDiv.className = allPassed ? 'summary' : 'summary fail';
   summaryDiv.innerHTML = `
     <strong>Test Results:</strong> ${passedTests} / ${totalTests} passed
-    ${failedTests > 0 ? `<br><strong>${failedTests} tests failed</strong>` : '<br><strong>✨ All tests passed!</strong>'}
+    ${failedTests > 0 ? `<br><strong>⚠️ ${failedTests} tests failed - Calculator has issues!</strong>` : '<br><strong>✨ All tests passed!</strong>'}
   `;
 }
 
