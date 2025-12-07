@@ -477,11 +477,188 @@ test('UI: Default values load correctly', 'ui', async () => {
   }
   
   const price = calc.$('price').value;
-  assert(price == 500000, `Expected default price 500000, got ${price}`);
+  assert(price == 650000, `Expected default price 650000, got ${price}`);
   
   // Verify outputs were actually calculated
   const depositText = calc.$('out_deposit').innerText;
   assert(depositText && !depositText.includes('NaN'), `Deposit should be valid, got: "${depositText}"`);
+});
+
+test('VALIDATION: All input fields have valid default values', 'ui', async () => {
+  const calc = getCalculator();
+  await wait(300);
+  
+  const requiredInputs = {
+    'price': { min: 100000, name: 'Property Price' },
+    'rent_week': { min: 1, name: 'Weekly Rent' },
+    'strata_qtr': { min: 0, name: 'Strata Fees' },
+    'deposit_percent': { min: 0, max: 100, name: 'Deposit %' },
+    'interest_rate': { min: 0, max: 30, name: 'Interest Rate' },
+    'loan_term': { min: 1, max: 40, name: 'Loan Term' },
+    'legal_fee': { min: 0, name: 'Legal Fees' },
+    'inspection_fee': { min: 0, name: 'Inspection Fee' },
+    'loan_fees': { min: 0, name: 'Loan Fees' },
+    'pm_pct': { min: 0, max: 100, name: 'Property Management %' },
+    'maintenance': { min: 0, name: 'Maintenance' }
+  };
+  
+  const failures = [];
+  for(const [id, config] of Object.entries(requiredInputs)) {
+    const el = calc.$(id);
+    if(!el) {
+      failures.push(`Missing input: ${config.name} (${id})`);
+      continue;
+    }
+    
+    const value = Number(el.value);
+    if(isNaN(value)) {
+      failures.push(`${config.name}: value is NaN`);
+    } else if(config.min !== undefined && value < config.min) {
+      failures.push(`${config.name}: ${value} < minimum ${config.min}`);
+    } else if(config.max !== undefined && value > config.max) {
+      failures.push(`${config.name}: ${value} > maximum ${config.max}`);
+    }
+  }
+  
+  assert(failures.length === 0, `Invalid input defaults:\n${failures.join('\n')}`);
+});
+
+test('VALIDATION: All outputs show calculated values not zeros', 'ui', async () => {
+  const calc = getCalculator();
+  calc.updateAll();
+  await wait(300);
+  
+  const criticalOutputs = {
+    'out_deposit': 'Deposit',
+    'out_stamp': 'Stamp Duty',
+    'out_fees': 'Fees',
+    'out_upfront': 'Total Upfront',
+    'out_loan': 'Loan Amount',
+    'out_monthly': 'Monthly Repayment',
+    'out_rent_annual': 'Annual Rent',
+    'out_opcosts': 'Operating Costs',
+    'out_cashflow': 'Cashflow'
+  };
+  
+  const failures = [];
+  for(const [id, name] of Object.entries(criticalOutputs)) {
+    const el = calc.$(id);
+    if(!el) {
+      failures.push(`Missing output: ${name} (${id})`);
+      continue;
+    }
+    
+    const text = el.innerText;
+    if(!text || text === '' || text === '$0' || text === '0') {
+      failures.push(`${name}: shows zero or empty ("${text}")`);
+    } else if(text.includes('NaN') || text.includes('undefined')) {
+      failures.push(`${name}: contains invalid value ("${text}")`);
+    }
+  }
+  
+  assert(failures.length === 0, `Invalid outputs:\n${failures.join('\n')}`);
+});
+
+test('VALIDATION: Outputs match expected calculations for defaults', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Reset to known defaults
+  calc.$('price').value = 650000;
+  calc.$('rent_week').value = 500;
+  calc.$('deposit_percent').value = 20;
+  calc.$('interest_rate').value = 6.0;
+  calc.$('loan_term').value = 30;
+  calc.updateAll();
+  await wait(200);
+  
+  // Expected values based on defaults
+  const deposit = 650000 * 0.20; // 130,000
+  const depositText = calc.$('out_deposit').innerText;
+  const depositActual = parseInt(depositText.replace(/[^0-9]/g, ''));
+  assert(depositActual === 130000, `Expected deposit $130,000, got $${depositActual}`);
+  
+  // Stamp duty for $650k in NSW
+  const stampText = calc.$('out_stamp').innerText;
+  const stampActual = parseInt(stampText.replace(/[^0-9]/g, ''));
+  assertApprox(stampActual, 25490, 50, `Expected stamp duty ~$25,490, got $${stampActual}`);
+  
+  // Loan amount
+  const loanText = calc.$('out_loan').innerText;
+  const loanActual = parseInt(loanText.replace(/[^0-9]/g, ''));
+  assert(loanActual === 520000, `Expected loan $520,000, got $${loanActual}`);
+  
+  // Monthly repayment for $520k @ 6% for 30 years
+  const monthlyText = calc.$('out_monthly').innerText;
+  const monthlyActual = parseInt(monthlyText.replace(/[^0-9]/g, ''));
+  assertApprox(monthlyActual, 3118, 20, `Expected monthly ~$3,118, got $${monthlyActual}`);
+  
+  // Annual rent
+  const rentText = calc.$('out_rent_annual').innerText;
+  const rentActual = parseInt(rentText.replace(/[^0-9]/g, ''));
+  assert(rentActual === 26000, `Expected annual rent $26,000, got $${rentActual}`);
+});
+
+test('VALIDATION: Input-output consistency check', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Set specific values
+  calc.$('price').value = 500000;
+  calc.$('deposit_percent').value = 20;
+  calc.updateAll();
+  await wait(200);
+  
+  const price = Number(calc.$('price').value);
+  const depositPct = Number(calc.$('deposit_percent').value);
+  
+  const expectedDeposit = Math.round(price * (depositPct / 100));
+  const depositText = calc.$('out_deposit').innerText;
+  const actualDeposit = parseInt(depositText.replace(/[^0-9]/g, ''));
+  
+  assert(actualDeposit === expectedDeposit, 
+         `Deposit calculation error: ${depositPct}% of $${price} should be $${expectedDeposit}, got $${actualDeposit}`);
+  
+  const expectedLoan = price - expectedDeposit;
+  const loanText = calc.$('out_loan').innerText;
+  const actualLoan = parseInt(loanText.replace(/[^0-9]/g, ''));
+  
+  assert(actualLoan === expectedLoan,
+         `Loan calculation error: $${price} - $${expectedDeposit} should be $${expectedLoan}, got $${actualLoan}`);
+});
+
+test('CRITICAL: No all-zeros bug - page load must calculate', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Wait for page load calculations
+  await wait(500);
+  
+  // Check that we don't have the "all zeros" bug
+  const outputsToCheck = ['out_deposit', 'out_stamp', 'out_loan', 'out_monthly', 'out_rent_annual', 'out_opcosts'];
+  const allZeros = [];
+  const hasValues = [];
+  
+  for(const id of outputsToCheck) {
+    const text = calc.$(id).innerText;
+    const numValue = parseInt(text.replace(/[^0-9]/g, '')) || 0;
+    
+    if(numValue === 0) {
+      allZeros.push(id);
+    } else {
+      hasValues.push(`${id}=${text}`);
+    }
+  }
+  
+  // If more than half the outputs are zero, we have the bug
+  assert(allZeros.length < 3, 
+         `All-zeros bug detected! ${allZeros.length} outputs are $0: ${allZeros.join(', ')}.\nNon-zero values: ${hasValues.join(', ')}`);
+  
+  // Specifically check that key outputs are non-zero
+  const depositText = calc.$('out_deposit').innerText;
+  const deposit = parseInt(depositText.replace(/[^0-9]/g, ''));
+  assert(deposit > 0, `Deposit should not be $0, got "${depositText}"`);
+  
+  const loanText = calc.$('out_loan').innerText;
+  const loan = parseInt(loanText.replace(/[^0-9]/g, ''));
+  assert(loan > 0, `Loan should not be $0, got "${loanText}"`);
 });
 
 test('UI: Stamp duty updates on price change', 'ui', async () => {
@@ -986,10 +1163,51 @@ test('UI Interaction: Reset button restores defaults', 'ui', async () => {
   await wait(200);
   
   const price = calc.$('price').value;
-  assert(price == 650000, `Expected default price 650000, got ${price}`);
+  assert(price == 650000, `Expected default price 650000 after reset, got ${price}`);
   
   const rent = calc.$('rent_week').value;
-  assert(rent == 500, `Expected default rent 500, got ${rent}`);
+  assert(rent == 500, `Expected default rent 500 after reset, got ${rent}`);
+  
+  // Verify calculation ran after reset
+  const depositText = calc.$('out_deposit').innerText;
+  const deposit = parseInt(depositText.replace(/[^0-9]/g, ''));
+  assert(deposit === 130000, `Expected deposit $130,000 after reset, got $${deposit}`);
+});
+
+test('VALIDATION: Reset button matches HTML defaults', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Get HTML default values
+  const htmlDefaults = {
+    price: Number(calc.$('price').defaultValue) || Number(calc.$('price').getAttribute('value')),
+    rent_week: Number(calc.$('rent_week').defaultValue) || Number(calc.$('rent_week').getAttribute('value')),
+    deposit_percent: Number(calc.$('deposit_percent').defaultValue) || Number(calc.$('deposit_percent').getAttribute('value')),
+    interest_rate: Number(calc.$('interest_rate').defaultValue) || Number(calc.$('interest_rate').getAttribute('value'))
+  };
+  
+  // Click reset
+  calc.document.getElementById('resetBtn').click();
+  await wait(200);
+  
+  // Get reset values
+  const resetValues = {
+    price: Number(calc.$('price').value),
+    rent_week: Number(calc.$('rent_week').value),
+    deposit_percent: Number(calc.$('deposit_percent').value),
+    interest_rate: Number(calc.$('interest_rate').value)
+  };
+  
+  // Compare
+  const mismatches = [];
+  for(const [key, htmlValue] of Object.entries(htmlDefaults)) {
+    const resetValue = resetValues[key];
+    if(htmlValue && resetValue && htmlValue !== resetValue) {
+      mismatches.push(`${key}: HTML default=${htmlValue}, Reset sets=${resetValue}`);
+    }
+  }
+  
+  assert(mismatches.length === 0, 
+         `Reset button doesn't match HTML defaults:\n${mismatches.join('\n')}`);
 });
 
 test('UI Interaction: PDF button exists and is clickable', 'ui', async () => {
