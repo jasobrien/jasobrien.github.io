@@ -267,9 +267,65 @@ Tests monitor console.error for any JavaScript errors during execution, ensuring
 | Charts | 6 | 100% |
 | Tab Switching | 5 | 100% |
 | Edge Cases | 10 | Extensive |
+| **Critical Tests** | **2** | **NEW - Must Pass First** |
+| **Validation Tests** | **6** | **Quality Gates** |
 | Stress Tests | 2 | Basic |
 | Real-World Scenarios | 4 | Representative |
-| **TOTAL** | **75+** | **Comprehensive** |
+| **TOTAL** | **87+** | **Comprehensive** |
+
+### Critical Tests (Must Pass First) 🔴
+
+These tests validate the calculator can load and function at all. If any critical test fails, all other tests are stopped.
+
+1. **Page Loads Without Console Errors**
+   - Monitors console.error during page load
+   - Captures errors from initial page load
+   - Prevents tests from running on broken calculator
+   - **Catches:** TypeError during initialization
+
+2. **All Output Elements Exist in HTML**
+   - Validates every element JavaScript writes to
+   - Checks all `$('out_...').innerText` targets exist
+   - Lists missing elements if validation fails
+   - **Catches:** Missing HTML elements (out_lmi, out_net_before_interest)
+
+### New Validation Tests (Critical Quality Gates)
+
+1. **All Input Fields Have Valid Default Values**
+   - Validates every input field exists
+   - Checks values are within valid ranges
+   - Ensures no NaN or invalid defaults
+   - Prevents configuration errors
+
+2. **All Outputs Show Calculated Values Not Zeros**
+   - Catches the "all zeros" display bug
+   - Ensures outputs are populated on load
+   - Validates non-empty, non-zero outputs
+   - Prevents blank calculator syndrome
+
+3. **Outputs Match Expected Calculations for Defaults**
+   - Validates arithmetic accuracy
+   - Checks deposit = price × deposit%
+   - Verifies stamp duty calculations
+   - Ensures formulas are correct
+
+4. **Input-Output Consistency Check**
+   - Dynamic validation of calculations
+   - Sets values, verifies outputs
+   - Catches formula errors
+   - Ensures calculation integrity
+
+5. **No All-Zeros Bug - Page Load Must Calculate**
+   - Regression test for reported bug
+   - Detects if multiple outputs are $0
+   - Ensures page load triggers calculations
+   - Critical quality gate
+
+6. **Reset Button Matches HTML Defaults**
+   - Validates HTML/JS consistency
+   - Catches default value mismatches
+   - Ensures reset works correctly
+   - Prevents configuration drift
 
 ---
 

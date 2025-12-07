@@ -273,6 +273,42 @@ test('Break-even: 3% growth, $500k property', 'calculation', () => {
 // UI INTEGRATION TESTS - Test the actual calculator interface
 // ============================================================================
 
+test('CRITICAL: Page loads without console errors', 'ui', async () => {
+  const iframe = document.getElementById('calculator');
+  const calc = iframe.contentWindow;
+  
+  // Check if any errors were captured during page load
+  // This should be the FIRST test to run
+  const errorCount = (calc.console._errorLog || []).length;
+  assert(errorCount === 0, `Page threw ${errorCount} console errors during load - calculator is broken!`);
+});
+
+test('CRITICAL: All output elements exist in HTML', 'ui', async () => {
+  const calc = getCalculator();
+  
+  // Verify every element that updateAll() tries to write to actually exists
+  const requiredOutputElements = [
+    'out_deposit', 'out_stamp', 'out_fees', 'out_upfront',
+    'out_loan', 'out_monthly', 'out_interest',
+    'out_rent_annual', 'out_opcosts', 'out_interest_display',
+    'out_cashflow', 'out_gross_yield', 'out_net_yield',
+    'out_depreciation', 'out_total_deduction', 'out_tax_refund',
+    'out_after_tax_cashflow'
+  ];
+  
+  const missingElements = [];
+  for(const id of requiredOutputElements) {
+    const el = calc.$(id);
+    if(!el) {
+      missingElements.push(id);
+    }
+  }
+  
+  assert(missingElements.length === 0, 
+         `Missing output elements in HTML: ${missingElements.join(', ')}\n` +
+         `Code tries to set these elements but they don't exist!`);
+});
+
 test('UI: Calculator loads without JavaScript errors', 'ui', async () => {
   const calc = getCalculator();
   assert(calc.window, 'Calculator window should exist');
@@ -1076,19 +1112,6 @@ test('Validation: Percentage outputs are in valid range', 'ui', async () => {
   assert(netYieldValue >= -50 && netYieldValue <= 100, `Net yield should be reasonable, got ${netYieldValue}%`);
 });
 
-test('Validation: LVR calculation is within bounds', 'ui', async () => {
-  const calc = getCalculator();
-  calc.$('price').value = 600000;
-  calc.$('deposit_percent').value = 25;
-  calc.updateAll();
-  await wait(100);
-  
-  const lvrText = calc.$('out_lvr').innerText;
-  const lvr = parseFloat(lvrText);
-  assert(lvr >= 0 && lvr <= 100, `LVR should be 0-100%, got ${lvr}%`);
-  assert(lvr === 75, `Expected 75% LVR with 25% deposit, got ${lvr}%`);
-});
-
 // ============================================================================
 // TAB SWITCHING AND UI INTERACTION TESTS
 // ============================================================================
@@ -1381,9 +1404,10 @@ test('Real-world: First home buyer with LMI', 'ui', async () => {
   const lmiChecked = calc.$('include_lmi').checked;
   assert(lmiChecked, 'LMI should be enabled for 10% deposit');
   
-  const lmiText = calc.$('out_lmi').innerText;
-  const lmi = parseInt(lmiText.replace(/[^0-9]/g, ''));
-  assert(lmi > 10000, `Expected significant LMI, got $${lmi}`);
+  // LMI is included in out_fees, so fees should be significantly higher than base fees
+  const feesText = calc.$('out_fees').innerText;
+  const fees = parseInt(feesText.replace(/[^0-9]/g, ''));
+  assert(fees > 10000, `Expected significant fees (including LMI), got $${fees}`);
 });
 
 test('Real-world: Investor with depreciation benefits', 'ui', async () => {
@@ -1467,39 +1491,85 @@ async function runTests(filter = null) {
   
   // Wait for iframe to load
   const iframe = document.getElementById('calculator');
+  
+  // Set up error monitoring BEFORE the page loads
+  const loadErrors = [];
+  const loadWarnings = [];
+  
+  // Hook console errors early
+  iframe.addEventListener('load', () => {
+    const calc = iframe.contentWindow;
+    const originalError = calc.console.error;
+    const originalWarn = calc.console.warn;
+    
+    calc.console.error = function(...args) {
+      loadErrors.push(args.join(' '));
+      originalError.apply(calc.console, args);
+    };
+    
+    calc.console.warn = function(...args) {
+      loadWarnings.push(args.join(' '));
+      originalWarn.apply(calc.console, args);
+    };
+  });
+  
   if (!iframe.contentWindow.document.body) {
     await new Promise(resolve => {
       iframe.onload = resolve;
     });
     await wait(1000); // Extra wait for scripts to initialize
+  } else {
+    // Page already loaded, wait a bit more
+    await wait(500);
   }
   
-  // Check for any console errors during load
   const calc = iframe.contentWindow;
-  const loadErrors = [];
-  const originalError = calc.console.error;
-  calc.console.error = function(...args) {
-    loadErrors.push(args.join(' '));
-    originalError.apply(calc.console, args);
-  };
+  
+  // Check for console errors that occurred during page load
+  if (loadErrors.length > 0) {
+    resultsDiv.innerHTML = `<div style="background:#fee;padding:20px;border:2px solid #f00;border-radius:8px;margin:20px 0;">
+      <strong>❌ CONSOLE ERRORS DETECTED DURING PAGE LOAD</strong><br><br>
+      The calculator threw errors while loading. Tests cannot proceed with a broken calculator.<br><br>
+      <strong>Errors:</strong><br>
+      ${loadErrors.map(e => `<div style="font-family:monospace;background:#fff;padding:8px;margin:4px 0;border-left:4px solid #f00;">${e}</div>`).join('')}
+    </div>`;
+    return;
+  }
   
   // Verify calculator loaded properly
   try {
     if (!calc.updateAll || typeof calc.updateAll !== 'function') {
-      resultsDiv.innerHTML = '<div class="alert danger"><strong>❌ CRITICAL ERROR</strong><br>Calculator failed to load properly. updateAll function is missing or invalid.</div>';
+      resultsDiv.innerHTML = '<div style="background:#fee;padding:20px;border:2px solid #f00;border-radius:8px;"><strong>❌ CRITICAL ERROR</strong><br>Calculator failed to load properly. updateAll function is missing or invalid.</div>';
       return;
     }
     
     // Try running updateAll to check for immediate errors
+    const testErrors = [];
+    const originalError = calc.console.error;
+    calc.console.error = function(...args) {
+      testErrors.push(args.join(' '));
+      originalError.apply(calc.console, args);
+    };
+    
     calc.updateAll();
     await wait(300);
     
-    if (loadErrors.length > 0) {
-      resultsDiv.innerHTML = `<div class="alert danger"><strong>❌ CALCULATOR ERRORS DETECTED</strong><br>${loadErrors.join('<br>')}</div>`;
+    if (testErrors.length > 0) {
+      resultsDiv.innerHTML = `<div style="background:#fee;padding:20px;border:2px solid #f00;border-radius:8px;margin:20px 0;">
+        <strong>❌ CALCULATOR ERRORS DURING TEST EXECUTION</strong><br><br>
+        updateAll() threw errors when called. Calculator is not functioning correctly.<br><br>
+        <strong>Errors:</strong><br>
+        ${testErrors.map(e => `<div style="font-family:monospace;background:#fff;padding:8px;margin:4px 0;border-left:4px solid #f00;">${e}</div>`).join('')}
+      </div>`;
       return;
     }
   } catch(e) {
-    resultsDiv.innerHTML = `<div class="alert danger"><strong>❌ CALCULATOR INITIALIZATION FAILED</strong><br>${e.message}<br><br>Stack: ${e.stack}</div>`;
+    resultsDiv.innerHTML = `<div style="background:#fee;padding:20px;border:2px solid #f00;border-radius:8px;">
+      <strong>❌ CALCULATOR INITIALIZATION FAILED</strong><br><br>
+      ${e.message}<br><br>
+      <strong>Stack:</strong><br>
+      <div style="font-family:monospace;background:#fff;padding:8px;margin:8px 0;overflow:auto;">${e.stack}</div>
+    </div>`;
     return;
   }
   

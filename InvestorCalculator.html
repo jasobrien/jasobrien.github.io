@@ -758,7 +758,6 @@ function updateCapitalAppreciation(){
 
 /* Main calculation */
 function updateAll(){
-  console.log('updateAll called');
   // Get depreciation checkbox logic
   const depreciationCheckbox = document.getElementById('include_depreciation');
   const includeDepreciation = depreciationCheckbox ? depreciationCheckbox.checked : false;
@@ -770,7 +769,6 @@ function updateAll(){
     lmiCheckbox.checked = true;
   }
   const price = Number($('price').value) || 0;
-  console.log('Price read:', price);
   const rent_week = Number($('rent_week').value) || 0;
   const strata_qtr = Number($('strata_qtr').value) || 0;
   const deposit_pct = Number($('deposit_percent').value) || 20;
@@ -800,8 +798,6 @@ function updateAll(){
     const lmiRate = Math.min(0.03, Math.max(0.005, (lvr - 0.8) * 0.5 + 0.01));
     lmi = Math.round(loanAmountIf * lmiRate);
   }
-  // Show LMI in summary
-  $('out_lmi').innerText = '$' + fmt(lmi);
 
   const out_fees = legal + inspection + loan_fees + lmi;
   $('out_fees').innerText = '$' + fmt(out_fees);
@@ -834,7 +830,6 @@ function updateAll(){
   $('out_opcosts').innerText = '$' + fmt(opCosts);
 
   const netBeforeInterest = rentAnnual - opCosts;
-  $('out_net_before_interest').innerText = '$' + fmt(netBeforeInterest);
 
   // compute interest paid in first 12 months using amortisation schedule
   let annualInterest = 0;
